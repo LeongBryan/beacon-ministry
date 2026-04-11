@@ -1,105 +1,112 @@
-import { format } from "date-fns";
-import { CalendarDays, Clock, MapPin } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo } from "react";
+import { format, parseISO, isBefore } from "date-fns";
+import { CalendarDays, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { sampleRoster, currentUser } from "@/data/sampleData";
+import { scheduleSlots, bookings, rooms } from "@/data/mockData";
+
+const CURRENT_USER = "Sarah Tan";
 
 const MySchedule = () => {
-  const myDuties = sampleRoster
-    .filter((r) => r.person === currentUser.name)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const today = new Date();
 
-  const upcoming = myDuties.filter((d) => new Date(d.date) >= new Date());
-  const past = myDuties.filter((d) => new Date(d.date) < new Date());
+  const mySlots = useMemo(() =>
+    scheduleSlots
+      .filter((s) => s.people.includes(CURRENT_USER))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    []
+  );
+
+  const myBookings = useMemo(() =>
+    bookings
+      .filter((b) => b.bookedBy === CURRENT_USER)
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    []
+  );
+
+  const upcomingSlots = mySlots.filter((s) => !isBefore(parseISO(s.date), today));
+  const upcomingBookings = myBookings.filter((b) => !isBefore(parseISO(b.date), today));
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">My Schedule</h1>
-        <p className="text-muted-foreground mt-1">Your upcoming serving duties at a glance</p>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">My Schedule</h1>
+        <p className="text-muted-foreground mt-1">Hi {CURRENT_USER} — here's what's coming up for you.</p>
       </div>
 
-      {/* Summary */}
-      <Card className="border-border bg-warm-gold-light/30">
-        <CardContent className="flex items-center gap-4 p-6">
-          <div className="w-14 h-14 rounded-xl bg-warm-gold-light flex items-center justify-center">
-            <CalendarDays size={24} className="text-foreground" />
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-foreground">{upcoming.length}</p>
-            <p className="text-muted-foreground">Upcoming {upcoming.length === 1 ? "duty" : "duties"}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Upcoming */}
-      <div>
-        <h2 className="text-xl font-bold text-foreground mb-4">Coming Up</h2>
-        {upcoming.length === 0 ? (
-          <Card className="border-border">
-            <CardContent className="text-center py-12 text-muted-foreground">
-              <p className="text-lg">No upcoming duties 🎉</p>
-              <p className="text-sm">Enjoy your rest!</p>
-            </CardContent>
-          </Card>
+      {/* Serving duties */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+          <CalendarDays size={20} /> Serving Duties
+        </h2>
+        {upcomingSlots.length === 0 ? (
+          <p className="text-muted-foreground bg-card rounded-lg border border-border p-6 text-center">
+            No upcoming serving duties.
+          </p>
         ) : (
-          <div className="space-y-3">
-            {upcoming.map((duty) => (
-              <Card key={duty.id} className="border-border hover:shadow-md transition-shadow">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="text-center min-w-[56px]">
-                    <p className="text-2xl font-bold text-foreground">
-                      {format(new Date(duty.date), "d")}
-                    </p>
-                    <p className="text-xs text-muted-foreground uppercase font-medium">
-                      {format(new Date(duty.date), "MMM")}
-                    </p>
-                  </div>
-                  <div className="w-px h-12 bg-border" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground text-lg">{duty.role}</p>
-                    <p className="text-muted-foreground">{duty.ministry}</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {format(new Date(duty.date), "EEEE")}
-                    </p>
-                  </div>
-                  <Badge className="bg-soft-green text-foreground border-0 shrink-0">
-                    Upcoming
-                  </Badge>
-                </CardContent>
-              </Card>
+          <div className="space-y-2">
+            {upcomingSlots.map((slot) => (
+              <div key={slot.id} className="flex items-start gap-4 bg-card rounded-lg border border-border p-4">
+                <div className="text-center min-w-[60px]">
+                  <div className="text-xs text-muted-foreground">{format(parseISO(slot.date), "EEE")}</div>
+                  <div className="text-xl font-bold text-foreground">{format(parseISO(slot.date), "d")}</div>
+                  <div className="text-xs text-muted-foreground">{format(parseISO(slot.date), "MMM")}</div>
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">{slot.ministry}</div>
+                  <div className="text-sm text-muted-foreground">{slot.role}</div>
+                  {slot.notes && <div className="text-xs text-muted-foreground mt-1">{slot.notes}</div>}
+                  {slot.linkedRoom && (
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <MapPin size={12} />
+                      {rooms.find((r) => r.id === slot.linkedRoom)?.name || slot.linkedRoom}
+                    </div>
+                  )}
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">
+                  {slot.people.length > 1 ? `+${slot.people.length - 1} others` : "Solo"}
+                </Badge>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Past (if any) */}
-      {past.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold text-foreground mb-4 text-muted-foreground">Past Duties</h2>
-          <div className="space-y-2 opacity-60">
-            {past.map((duty) => (
-              <Card key={duty.id} className="border-border">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="text-center min-w-[48px]">
-                    <p className="text-lg font-bold text-muted-foreground">
-                      {format(new Date(duty.date), "d")}
-                    </p>
-                    <p className="text-xs text-muted-foreground uppercase">
-                      {format(new Date(duty.date), "MMM")}
-                    </p>
+      {/* Room bookings */}
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+          <MapPin size={20} /> My Room Bookings
+        </h2>
+        {upcomingBookings.length === 0 ? (
+          <p className="text-muted-foreground bg-card rounded-lg border border-border p-6 text-center">
+            No upcoming room bookings.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {upcomingBookings.map((booking) => (
+              <div key={booking.id} className="flex items-start gap-4 bg-card rounded-lg border border-border p-4">
+                <div className="text-center min-w-[60px]">
+                  <div className="text-xs text-muted-foreground">{format(parseISO(booking.date), "EEE")}</div>
+                  <div className="text-xl font-bold text-foreground">{format(parseISO(booking.date), "d")}</div>
+                  <div className="text-xs text-muted-foreground">{format(parseISO(booking.date), "MMM")}</div>
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-foreground">
+                    {rooms.find((r) => r.id === booking.roomId)?.name}
                   </div>
-                  <div className="w-px h-10 bg-border" />
-                  <div className="flex-1">
-                    <p className="font-medium text-muted-foreground">{duty.role}</p>
-                    <p className="text-sm text-muted-foreground">{duty.ministry}</p>
+                  <div className="text-sm text-muted-foreground">
+                    {booking.startTime} – {booking.endTime}
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="text-xs text-muted-foreground mt-0.5">{booking.ministry}</div>
+                  {booking.notes && <div className="text-xs text-muted-foreground">{booking.notes}</div>}
+                </div>
+                {booking.recurring && (
+                  <Badge variant="outline" className="text-xs shrink-0">Recurring</Badge>
+                )}
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 };
