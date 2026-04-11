@@ -5,10 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
-import MinistryFiles from "@/pages/MinistryFiles";
-import ServingRoster from "@/pages/ServingRoster";
+import PeopleMap from "@/pages/PeopleMap";
+import RoomBooking from "@/pages/RoomBooking";
+import Schedule from "@/pages/Schedule";
 import MySchedule from "@/pages/MySchedule";
-import Announcements from "@/pages/Announcements";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,10 +21,10 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/files" element={<AppLayout><MinistryFiles /></AppLayout>} />
-          <Route path="/roster" element={<AppLayout><ServingRoster /></AppLayout>} />
+          <Route path="/people" element={<AppLayout><PeopleMap /></AppLayout>} />
+          <Route path="/rooms" element={<AppLayout><RoomBooking /></AppLayout>} />
+          <Route path="/schedule" element={<AppLayout><Schedule /></AppLayout>} />
           <Route path="/my-schedule" element={<AppLayout><MySchedule /></AppLayout>} />
-          <Route path="/announcements" element={<AppLayout><Announcements /></AppLayout>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

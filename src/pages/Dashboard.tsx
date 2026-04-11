@@ -1,164 +1,163 @@
-import { format } from "date-fns";
-import {
-  FolderOpen,
-  CalendarDays,
-  Megaphone,
-  Clock,
-  FileText,
-  ChevronRight,
-  AlertCircle,
-} from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { sampleFiles, sampleRoster, sampleAnnouncements, currentUser } from "@/data/sampleData";
+import { format, parseISO, isBefore } from "date-fns";
+import { CalendarDays, MapPin, Users, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { scheduleSlots, bookings, rooms, people } from "@/data/mockData";
+
+const CURRENT_USER = "Sarah Tan";
 
 const Dashboard = () => {
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
-  const upcomingDuties = sampleRoster.filter((r) => r.person === currentUser.name).slice(0, 3);
-  const recentFiles = sampleFiles.slice(0, 4);
-  const latestAnnouncements = sampleAnnouncements.slice(0, 3);
+
+  const todaySlots = useMemo(
+    () => scheduleSlots.filter((s) => s.date === todayStr && s.people.includes(CURRENT_USER)),
+    [todayStr]
+  );
+
+  const upcomingSlots = useMemo(
+    () =>
+      scheduleSlots
+        .filter((s) => !isBefore(parseISO(s.date), today) && s.people.includes(CURRENT_USER))
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(0, 5),
+    [today]
+  );
+
+  const todayBookings = useMemo(
+    () => bookings.filter((b) => b.date === todayStr),
+    [todayStr]
+  );
+
+  const followUps = useMemo(
+    () => people.filter((p) => p.status === "follow-up"),
+    []
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-          Welcome back, {currentUser.name.split(" ")[0]} 🌿
-        </h1>
-        <p className="text-muted-foreground mt-1 text-lg">
-          {format(today, "EEEE, d MMMM yyyy")}
-        </p>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">Good {getGreeting()}, Sarah</h1>
+        <p className="text-muted-foreground mt-1">{format(today, "EEEE, d MMMM yyyy")}</p>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Link to="/my-schedule">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer border-border">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="w-12 h-12 rounded-xl bg-warm-gold-light flex items-center justify-center">
-                <CalendarDays className="text-foreground" size={22} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{upcomingDuties.length}</p>
-                <p className="text-sm text-muted-foreground">Upcoming duties</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/files">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer border-border">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="w-12 h-12 rounded-xl bg-soft-green flex items-center justify-center">
-                <FolderOpen className="text-foreground" size={22} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{sampleFiles.length}</p>
-                <p className="text-sm text-muted-foreground">Files available</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/announcements">
-          <Card className="hover:shadow-md transition-shadow cursor-pointer border-border">
-            <CardContent className="flex items-center gap-4 p-5">
-              <div className="w-12 h-12 rounded-xl bg-soft-blue flex items-center justify-center">
-                <Megaphone className="text-foreground" size={22} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{sampleAnnouncements.length}</p>
-                <p className="text-sm text-muted-foreground">Announcements</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Today's duties */}
+        <div className="bg-card rounded-lg border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-foreground flex items-center gap-2">
+              <CalendarDays size={18} /> Today's Duties
+            </h2>
+          </div>
+          {todaySlots.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No duties today.</p>
+          ) : (
+            <div className="space-y-2">
+              {todaySlots.map((slot) => (
+                <div key={slot.id} className="p-3 bg-muted/50 rounded-lg">
+                  <div className="font-medium text-sm text-foreground">{slot.ministry}</div>
+                  <div className="text-xs text-muted-foreground">{slot.role}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <Link to="/my-schedule">
+            <Button variant="ghost" size="sm" className="mt-3 gap-1 text-muted-foreground">
+              View my schedule <ArrowRight size={14} />
+            </Button>
+          </Link>
+        </div>
 
-      {/* Important announcements */}
-      {latestAnnouncements.filter((a) => a.important).length > 0 && (
-        <Card className="border-warm-gold bg-warm-gold-light/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertCircle size={20} className="text-warm-gold" />
-              Important Updates
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {latestAnnouncements
-              .filter((a) => a.important)
-              .map((a) => (
-                <div key={a.id} className="flex items-start gap-3">
-                  <Badge variant="secondary" className="bg-warm-gold-light text-foreground mt-0.5 shrink-0">
-                    {format(new Date(a.date), "d MMM")}
-                  </Badge>
-                  <div>
-                    <p className="font-medium text-foreground">{a.title}</p>
-                    <p className="text-sm text-muted-foreground">{a.content}</p>
+        {/* Room bookings today */}
+        <div className="bg-card rounded-lg border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-foreground flex items-center gap-2">
+              <MapPin size={18} /> Rooms Today
+            </h2>
+          </div>
+          {todayBookings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No bookings today.</p>
+          ) : (
+            <div className="space-y-2">
+              {todayBookings.slice(0, 4).map((b) => (
+                <div key={b.id} className="p-3 bg-muted/50 rounded-lg">
+                  <div className="font-medium text-sm text-foreground">
+                    {rooms.find((r) => r.id === b.roomId)?.name}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {b.startTime}–{b.endTime} · {b.bookedBy}
                   </div>
                 </div>
               ))}
-          </CardContent>
-        </Card>
-      )}
+              {todayBookings.length > 4 && (
+                <p className="text-xs text-muted-foreground">+{todayBookings.length - 4} more</p>
+              )}
+            </div>
+          )}
+          <Link to="/rooms">
+            <Button variant="ghost" size="sm" className="mt-3 gap-1 text-muted-foreground">
+              View room bookings <ArrowRight size={14} />
+            </Button>
+          </Link>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* My upcoming duties */}
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-lg">My Upcoming Duties</CardTitle>
-            <Link to="/my-schedule" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-              View all <ChevronRight size={14} />
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {upcomingDuties.length === 0 ? (
-              <p className="text-muted-foreground py-4 text-center">No upcoming duties 🎉</p>
-            ) : (
-              upcomingDuties.map((duty) => (
-                <div key={duty.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                  <div className="w-10 h-10 rounded-lg bg-warm-gold-light flex items-center justify-center">
-                    <Clock size={18} className="text-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">{duty.role}</p>
-                    <p className="text-sm text-muted-foreground">{duty.ministry}</p>
-                  </div>
-                  <Badge variant="outline" className="shrink-0">
-                    {format(new Date(duty.date), "d MMM")}
-                  </Badge>
+        {/* Follow-ups */}
+        <div className="bg-card rounded-lg border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-foreground flex items-center gap-2">
+              <Users size={18} /> Follow-ups
+            </h2>
+          </div>
+          {followUps.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No follow-ups needed.</p>
+          ) : (
+            <div className="space-y-2">
+              {followUps.map((p) => (
+                <div key={p.id} className="p-3 bg-warm-gold-light/50 rounded-lg">
+                  <div className="font-medium text-sm text-foreground">{p.name}</div>
+                  <div className="text-xs text-muted-foreground">{p.followUpNotes || p.notes}</div>
                 </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+              ))}
+            </div>
+          )}
+          <Link to="/people">
+            <Button variant="ghost" size="sm" className="mt-3 gap-1 text-muted-foreground">
+              View people map <ArrowRight size={14} />
+            </Button>
+          </Link>
+        </div>
+      </div>
 
-        {/* Recent files */}
-        <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-lg">Recent Files</CardTitle>
-            <Link to="/files" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-              View all <ChevronRight size={14} />
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentFiles.map((file) => (
-              <div key={file.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                <div className="w-10 h-10 rounded-lg bg-soft-blue flex items-center justify-center">
-                  <FileText size={18} className="text-foreground" />
+      {/* Upcoming duties */}
+      {upcomingSlots.length > 0 && (
+        <div className="mt-6 bg-card rounded-lg border border-border p-5">
+          <h2 className="font-semibold text-foreground mb-4">Upcoming Duties</h2>
+          <div className="space-y-2">
+            {upcomingSlots.map((slot) => (
+              <div key={slot.id} className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg">
+                <div className="text-center min-w-[50px]">
+                  <div className="text-xs text-muted-foreground">{format(parseISO(slot.date), "EEE")}</div>
+                  <div className="text-lg font-bold text-foreground">{format(parseISO(slot.date), "d")}</div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground text-sm truncate">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">{file.ministry} · {file.uploadedBy}</p>
+                <div>
+                  <div className="font-medium text-sm text-foreground">{slot.ministry}</div>
+                  <div className="text-xs text-muted-foreground">{slot.role}</div>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">{file.size}</span>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  return "evening";
+}
 
 export default Dashboard;

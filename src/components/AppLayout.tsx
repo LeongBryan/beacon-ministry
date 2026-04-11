@@ -2,10 +2,10 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  FolderOpen,
+  Users,
+  DoorOpen,
   CalendarDays,
   User,
-  Megaphone,
   Menu,
   X,
   LogOut,
@@ -14,10 +14,10 @@ import logo from "@/assets/logo.jpeg";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Home" },
-  { to: "/files", icon: FolderOpen, label: "Ministry Files" },
-  { to: "/roster", icon: CalendarDays, label: "Serving Roster" },
+  { to: "/people", icon: Users, label: "People Map" },
+  { to: "/rooms", icon: DoorOpen, label: "Room Booking" },
+  { to: "/schedule", icon: CalendarDays, label: "Schedule" },
   { to: "/my-schedule", icon: User, label: "My Schedule" },
-  { to: "/announcements", icon: Megaphone, label: "Announcements" },
 ];
 
 interface AppLayoutProps {
@@ -52,7 +52,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <h1 className="text-base font-semibold text-sidebar-foreground leading-tight truncate">
                 Bethesda CC
               </h1>
-              <p className="text-xs text-sidebar-foreground/60">Internal Hub</p>
+              <p className="text-xs text-sidebar-foreground/60">Planning Hub</p>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -92,7 +92,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">Sarah Tan</p>
-                <p className="text-xs text-sidebar-foreground/50">Ministry Leader</p>
+                <p className="text-xs text-sidebar-foreground/50">Leadership</p>
               </div>
               <button className="text-sidebar-foreground/40 hover:text-sidebar-foreground">
                 <LogOut size={18} />
@@ -113,7 +113,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             <Menu size={22} />
           </button>
           <img src={logo} alt="BCC" className="w-8 h-8 rounded-md object-cover" />
-          <span className="font-semibold text-foreground">Bethesda CC Hub</span>
+          <span className="font-semibold text-foreground">BCC Planning Hub</span>
         </div>
 
         <div className="p-6 md:p-8 max-w-6xl mx-auto animate-fade-in">
