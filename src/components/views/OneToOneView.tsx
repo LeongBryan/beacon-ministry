@@ -1,5 +1,11 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { X, ArrowLeftRight } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import PersonChip from "@/components/PersonChip";
 import {
   type Person, type OneToOne, type MeetingFrequency,
   frequencyColors, frequencyLabels,
@@ -8,51 +14,82 @@ import {
 interface Props {
   people: Person[];
   oneToOnes: OneToOne[];
+  onUpdateOneToOnes: (o: OneToOne[]) => void;
+  onUpdatePerson: (p: Person) => void;
 }
 
-interface NodePos {
-  id: string;
-  x: number;
-  y: number;
-}
-
-const FREQ_STROKE: Record<MeetingFrequency, string> = {
-  regular: "hsl(145, 50%, 42%)",
-  infrequent: "hsl(45, 70%, 50%)",
-  rarely: "hsl(220, 10%, 70%)",
-};
-
-const OneToOneView = ({ people, oneToOnes }: Props) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson }: Props) => {
+  const [dragPersonId, setDragPersonId] = useState<string | null>(null);
 
   const personMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people]);
 
-  // Find all people involved in 121s
-  const involvedIds = useMemo(() => {
+  // People involved in any 121
+  const pairedIds = useMemo(() => {
     const ids = new Set<string>();
     oneToOnes.forEach(o => { ids.add(o.personA); ids.add(o.personB); });
-    return Array.from(ids);
+    return ids;
   }, [oneToOnes]);
 
-  // Layout: place nodes in a circle
-  const nodePositions = useMemo((): NodePos[] => {
-    const count = involvedIds.length;
-    const cx = 400, cy = 300;
-    const radius = Math.min(250, Math.max(150, count * 20));
-    return involvedIds.map((id, i) => {
-      const angle = (2 * Math.PI * i) / count - Math.PI / 2;
-      return { id, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  const unassigned = useMemo(() =>
+    people.filter(p => !pairedIds.has(p.id)),
+    [people, pairedIds]
+  );
+
+  const handleDropOnPair = (targetPairId: string, side: "A" | "B", personId: string) => {
+    // Remove person from any existing pair (both sides)
+    let updated = oneToOnes.map(o => {
+      if (o.personA === personId) return { ...o, personA: "" };
+      if (o.personB === personId) return { ...o, personB: "" };
+      return o;
     });
-  }, [involvedIds]);
+    // Place in target
+    updated = updated.map(o => {
+      if (o.id === targetPairId) {
+        return side === "A" ? { ...o, personA: personId } : { ...o, personB: personId };
+      }
+      return o;
+    });
+    // Clean up empty pairs
+    updated = updated.filter(o => o.personA || o.personB);
+    onUpdateOneToOnes(updated);
+    setDragPersonId(null);
+  };
 
-  const posMap = useMemo(() => new Map(nodePositions.map(n => [n.id, n])), [nodePositions]);
+  const handleDropNewPair = (personId: string) => {
+    // Remove from existing pairs
+    let updated = oneToOnes.map(o => {
+      if (o.personA === personId) return { ...o, personA: "" };
+      if (o.personB === personId) return { ...o, personB: "" };
+      return o;
+    }).filter(o => o.personA || o.personB);
 
-  // Highlighted connections
-  const isHighlighted = useCallback((o: OneToOne) => {
-    if (!hoveredNode) return true;
-    return o.personA === hoveredNode || o.personB === hoveredNode;
-  }, [hoveredNode]);
+    // Create new pair with this person on side A
+    const newPair: OneToOne = {
+      id: `121-${Date.now()}`,
+      personA: personId,
+      personB: "",
+      frequency: "regular",
+      notes: "",
+    };
+    onUpdateOneToOnes([...updated, newPair]);
+    setDragPersonId(null);
+  };
+
+  const handleRemovePair = (pairId: string) => {
+    onUpdateOneToOnes(oneToOnes.filter(o => o.id !== pairId));
+  };
+
+  const handleChangeFrequency = (pairId: string, freq: MeetingFrequency) => {
+    onUpdateOneToOnes(oneToOnes.map(o => o.id === pairId ? { ...o, frequency: freq } : o));
+  };
+
+  const handleUnpairPerson = (pairId: string, side: "A" | "B") => {
+    const updated = oneToOnes.map(o => {
+      if (o.id !== pairId) return o;
+      return side === "A" ? { ...o, personA: "" } : { ...o, personB: "" };
+    }).filter(o => o.personA || o.personB);
+    onUpdateOneToOnes(updated);
+  };
 
   return (
     <div>
@@ -62,96 +99,188 @@ const OneToOneView = ({ people, oneToOnes }: Props) => {
         {Object.entries(frequencyLabels).map(([k, v]) => (
           <Badge key={k} className={`${frequencyColors[k as MeetingFrequency]} text-xs`}>{v}</Badge>
         ))}
-        <span className="text-xs text-muted-foreground ml-auto">Hover over a person to highlight their connections</span>
       </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Drag people from Unassigned into pair slots · Click chips to view details & tag · Use ✕ to remove pairs
+      </p>
 
-      {/* Graph */}
-      <div ref={containerRef} className="bg-card rounded-lg border border-border overflow-auto">
-        <svg viewBox="0 0 800 600" className="w-full h-auto min-h-[500px]">
-          {/* Edges */}
-          {oneToOnes.map(o => {
-            const a = posMap.get(o.personA);
-            const b = posMap.get(o.personB);
-            if (!a || !b) return null;
-            const highlighted = isHighlighted(o);
-            return (
-              <line
-                key={o.id}
-                x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke={FREQ_STROKE[o.frequency]}
-                strokeWidth={highlighted ? 3 : 1.5}
-                opacity={highlighted ? 1 : 0.15}
-                strokeDasharray={o.frequency === "rarely" ? "6,4" : o.frequency === "infrequent" ? "4,2" : "none"}
+      {/* Pairs Table */}
+      <div className="space-y-2 mb-6">
+        {oneToOnes.map(pair => {
+          const personA = pair.personA ? personMap.get(pair.personA) : null;
+          const personB = pair.personB ? personMap.get(pair.personB) : null;
+          return (
+            <div
+              key={pair.id}
+              className="flex items-center gap-3 bg-card rounded-lg border border-border p-3"
+            >
+              {/* Side A */}
+              <DropSlot
+                person={personA}
+                side="A"
+                pairId={pair.id}
+                dragPersonId={dragPersonId}
+                onDrop={handleDropOnPair}
+                onUnpair={handleUnpairPerson}
+                onUpdatePerson={onUpdatePerson}
+                onDragStart={setDragPersonId}
+                onDragEnd={() => setDragPersonId(null)}
               />
-            );
-          })}
 
-          {/* Edge labels */}
-          {oneToOnes.map(o => {
-            const a = posMap.get(o.personA);
-            const b = posMap.get(o.personB);
-            if (!a || !b || !isHighlighted(o)) return null;
-            const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-            return (
-              <text key={`label-${o.id}`} x={mx} y={my - 6} textAnchor="middle" fontSize={10} fill="hsl(220, 10%, 45%)" className="select-none pointer-events-none">
-                {frequencyLabels[o.frequency]}
-              </text>
-            );
-          })}
+              <ArrowLeftRight size={16} className="text-muted-foreground shrink-0" />
 
-          {/* Nodes */}
-          {nodePositions.map(node => {
-            const person = personMap.get(node.id);
-            if (!person) return null;
-            const isHovered = hoveredNode === node.id;
-            const isConnected = hoveredNode ? oneToOnes.some(o =>
-              (o.personA === hoveredNode && o.personB === node.id) ||
-              (o.personB === hoveredNode && o.personA === node.id)
-            ) : false;
-            const dimmed = hoveredNode && !isHovered && !isConnected;
-            return (
-              <g
-                key={node.id}
-                transform={`translate(${node.x}, ${node.y})`}
-                onMouseEnter={() => setHoveredNode(node.id)}
-                onMouseLeave={() => setHoveredNode(null)}
-                className="cursor-pointer"
-                opacity={dimmed ? 0.2 : 1}
+              {/* Side B */}
+              <DropSlot
+                person={personB}
+                side="B"
+                pairId={pair.id}
+                dragPersonId={dragPersonId}
+                onDrop={handleDropOnPair}
+                onUnpair={handleUnpairPerson}
+                onUpdatePerson={onUpdatePerson}
+                onDragStart={setDragPersonId}
+                onDragEnd={() => setDragPersonId(null)}
+              />
+
+              {/* Frequency */}
+              <Select
+                value={pair.frequency}
+                onValueChange={(v) => handleChangeFrequency(pair.id, v as MeetingFrequency)}
               >
-                <circle r={isHovered ? 24 : 20} fill="hsl(220, 35%, 25%)" opacity={0.9} />
-                <text y={1} textAnchor="middle" fontSize={10} fill="hsl(40, 30%, 97%)" className="select-none pointer-events-none font-medium">
-                  {person.name.split(" ")[0].slice(0, 6)}
-                </text>
-                <text y={36} textAnchor="middle" fontSize={11} fill="hsl(220, 30%, 15%)" className="select-none pointer-events-none">
-                  {person.name}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+                <SelectTrigger className="w-32 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(frequencyLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Remove pair */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() => handleRemovePair(pair.id)}
+              >
+                <X size={14} />
+              </Button>
+            </div>
+          );
+        })}
+
+        {/* New pair drop zone */}
+        <div
+          onDragOver={e => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const pid = e.dataTransfer.getData("text/plain") || dragPersonId;
+            if (pid) handleDropNewPair(pid);
+          }}
+          className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+            dragPersonId ? "border-primary/40 bg-primary/5" : "border-border"
+          }`}
+        >
+          <p className="text-sm text-muted-foreground">
+            {dragPersonId ? "Drop here to create a new pair" : "Drag someone here to start a new 1-to-1 pair"}
+          </p>
+        </div>
       </div>
 
-      {/* Summary list */}
-      <div className="mt-6 bg-card rounded-lg border border-border p-4">
-        <h3 className="text-sm font-medium text-foreground mb-3">All 1-to-1 Relationships</h3>
-        <div className="space-y-2">
-          {oneToOnes.map(o => {
-            const a = personMap.get(o.personA);
-            const b = personMap.get(o.personB);
-            return (
-              <div key={o.id} className="flex items-center gap-3 text-sm">
-                <span className="font-medium min-w-[100px]">{a?.name || "?"}</span>
-                <span className="text-muted-foreground">↔</span>
-                <span className="font-medium min-w-[100px]">{b?.name || "?"}</span>
-                <Badge className={`${frequencyColors[o.frequency]} text-xs`}>{frequencyLabels[o.frequency]}</Badge>
-                {o.notes && <span className="text-xs text-muted-foreground">{o.notes}</span>}
-              </div>
-            );
-          })}
+      {/* Unassigned pool */}
+      <div
+        onDragOver={e => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          // Dropping back to unassigned = remove from pairs
+          const pid = e.dataTransfer.getData("text/plain") || dragPersonId;
+          if (pid) {
+            const updated = oneToOnes.map(o => {
+              if (o.personA === pid) return { ...o, personA: "" };
+              if (o.personB === pid) return { ...o, personB: "" };
+              return o;
+            }).filter(o => o.personA || o.personB);
+            onUpdateOneToOnes(updated);
+            setDragPersonId(null);
+          }
+        }}
+        className={`rounded-lg border-2 border-dashed p-4 transition-colors ${
+          dragPersonId ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/30"
+        }`}
+      >
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">
+          Not in any 1-to-1 ({unassigned.length})
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {unassigned.map(p => (
+            <PersonChip
+              key={p.id}
+              person={p}
+              onUpdatePerson={onUpdatePerson}
+              draggable
+              compact
+              onDragStart={() => setDragPersonId(p.id)}
+              onDragEnd={() => setDragPersonId(null)}
+            />
+          ))}
+          {unassigned.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">Everyone is paired!</p>
+          )}
         </div>
       </div>
     </div>
   );
 };
+
+// Drop slot for one side of a pair
+function DropSlot({
+  person, side, pairId, dragPersonId, onDrop, onUnpair, onUpdatePerson, onDragStart, onDragEnd,
+}: {
+  person: Person | null | undefined;
+  side: "A" | "B";
+  pairId: string;
+  dragPersonId: string | null;
+  onDrop: (pairId: string, side: "A" | "B", personId: string) => void;
+  onUnpair: (pairId: string, side: "A" | "B") => void;
+  onUpdatePerson: (p: Person) => void;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    <div
+      onDragOver={e => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        const pid = e.dataTransfer.getData("text/plain") || dragPersonId;
+        if (pid) onDrop(pairId, side, pid);
+      }}
+      className={`flex items-center gap-1 min-w-[140px] rounded-md px-2 py-1.5 transition-colors ${
+        !person && dragPersonId ? "bg-primary/10 border border-dashed border-primary/30" :
+        !person ? "bg-muted/50 border border-dashed border-border" : ""
+      }`}
+    >
+      {person ? (
+        <div className="flex items-center gap-1">
+          <PersonChip
+            person={person}
+            onUpdatePerson={onUpdatePerson}
+            draggable
+            onDragStart={() => onDragStart(person.id)}
+            onDragEnd={onDragEnd}
+          />
+          <button
+            onClick={() => onUnpair(pairId, side)}
+            className="text-muted-foreground hover:text-destructive p-0.5"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ) : (
+        <span className="text-xs text-muted-foreground italic px-2">Drop here</span>
+      )}
+    </div>
+  );
+}
 
 export default OneToOneView;
