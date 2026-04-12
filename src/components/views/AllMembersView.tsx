@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import PersonChip from "@/components/PersonChip";
 import {
   type Person, type EngagementLevel,
-  ministries, engagementColors, engagementLabels,
+  ministries, engagementColors, engagementLabels, predefinedTags,
 } from "@/data/mockData";
 
 interface Props {
@@ -26,11 +26,24 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
   const [search, setSearch] = useState("");
   const [filterMinistry, setFilterMinistry] = useState("all");
   const [filterEngagement, setFilterEngagement] = useState("all");
+  const [filterTags, setFilterTags] = useState<string[]>([]);
   const [sortField, setSortField] = useState<"name" | "engagement">("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "cards">("list");
   const [editPerson, setEditPerson] = useState<Person | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Collect all tags in use
+  const allTagsInUse = useMemo(() => {
+    const s = new Set<string>();
+    predefinedTags.forEach(t => s.add(t));
+    people.forEach(p => p.tags.forEach(t => s.add(t)));
+    return Array.from(s).sort();
+  }, [people]);
+
+  const toggleFilterTag = (tag: string) => {
+    setFilterTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
 
   const filtered = useMemo(() => {
     let result = people.filter((p) => {
@@ -40,14 +53,15 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
         p.notes.toLowerCase().includes(s);
       const matchesMinistry = filterMinistry === "all" || p.ministries.includes(filterMinistry);
       const matchesEngagement = filterEngagement === "all" || p.engagement === filterEngagement;
-      return matchesSearch && matchesMinistry && matchesEngagement;
+      const matchesTags = filterTags.length === 0 || filterTags.every(t => p.tags.includes(t));
+      return matchesSearch && matchesMinistry && matchesEngagement && matchesTags;
     });
     result.sort((a, b) => {
       const cmp = String(a[sortField]).localeCompare(String(b[sortField]));
       return sortAsc ? cmp : -cmp;
     });
     return result;
-  }, [people, search, filterMinistry, filterEngagement, sortField, sortAsc]);
+  }, [people, search, filterMinistry, filterEngagement, filterTags, sortField, sortAsc]);
 
   const toggleSort = (field: "name" | "engagement") => {
     if (sortField === field) setSortAsc(!sortAsc);
@@ -59,11 +73,10 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
     return sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
-  const activeFilters = [filterMinistry, filterEngagement].filter(f => f !== "all").length;
+  const activeFilters = [filterMinistry, filterEngagement].filter(f => f !== "all").length + filterTags.length;
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">
           {filtered.length} {filtered.length === 1 ? "person" : "people"}
@@ -78,7 +91,6 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
         </div>
       </div>
 
-      {/* Search + Filters */}
       <div className="flex gap-3 mb-4">
         <div className="relative flex-1">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -91,30 +103,49 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
       </div>
 
       {showFilters && (
-        <div className="flex flex-wrap gap-3 mb-4 p-4 bg-card rounded-lg border border-border">
-          <Select value={filterMinistry} onValueChange={setFilterMinistry}>
-            <SelectTrigger className="w-48 h-10"><SelectValue placeholder="Ministry" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Ministries</SelectItem>
-              {ministries.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterEngagement} onValueChange={setFilterEngagement}>
-            <SelectTrigger className="w-40 h-10"><SelectValue placeholder="Engagement" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {(Object.entries(engagementLabels) as [string, string][]).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {activeFilters > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => { setFilterMinistry("all"); setFilterEngagement("all"); }} className="gap-1 text-muted-foreground">
-              <X size={14} /> Clear
-            </Button>
-          )}
+        <div className="space-y-3 mb-4 p-4 bg-card rounded-lg border border-border">
+          <div className="flex flex-wrap gap-3">
+            <Select value={filterMinistry} onValueChange={setFilterMinistry}>
+              <SelectTrigger className="w-48 h-10"><SelectValue placeholder="Ministry" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ministries</SelectItem>
+                {ministries.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterEngagement} onValueChange={setFilterEngagement}>
+              <SelectTrigger className="w-40 h-10"><SelectValue placeholder="Engagement" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                {(Object.entries(engagementLabels) as [string, string][]).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {activeFilters > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => { setFilterMinistry("all"); setFilterEngagement("all"); setFilterTags([]); }} className="gap-1 text-muted-foreground">
+                <X size={14} /> Clear all
+              </Button>
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Filter by tags:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {allTagsInUse.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleFilterTag(tag)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                    filterTags.includes(tag)
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {filterTags.includes(tag) ? "✓ " : ""}{tag}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* List View */}
       {viewMode === "list" && (
         <div className="bg-card rounded-lg border border-border overflow-x-auto">
           <table className="w-full text-sm">
@@ -148,6 +179,7 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {person.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
+                      {person.tags.length === 0 && <span className="text-muted-foreground italic text-xs">—</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3 max-w-[200px]">
@@ -167,7 +199,6 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
         </div>
       )}
 
-      {/* Cards View */}
       {viewMode === "cards" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(person => (
@@ -194,7 +225,6 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
         </div>
       )}
 
-      {/* Edit Dialog */}
       {editPerson && <EditPersonDialog person={editPerson} onSave={(p) => { onUpdatePerson(p); setEditPerson(null); }} onClose={() => setEditPerson(null)} />}
     </div>
   );
@@ -202,6 +232,14 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
 
 function EditPersonDialog({ person, onSave, onClose }: { person: Person; onSave: (p: Person) => void; onClose: () => void }) {
   const [draft, setDraft] = useState<Person>(person);
+
+  const toggleTag = (tag: string) => {
+    setDraft(d => ({
+      ...d,
+      tags: d.tags.includes(tag) ? d.tags.filter(t => t !== tag) : [...d.tags, tag],
+    }));
+  };
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
@@ -219,8 +257,23 @@ function EditPersonDialog({ person, onSave, onClose }: { person: Person; onSave:
             </Select>
           </div>
           <div>
-            <Label>Tags (comma-separated)</Label>
-            <Input value={draft.tags.join(", ")} onChange={e => setDraft({ ...draft, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) })} className="mt-1" />
+            <Label>Tags</Label>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {predefinedTags.map(tag => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleTag(tag)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                    draft.tags.includes(tag)
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {draft.tags.includes(tag) ? "✓ " : ""}{tag}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <Label>Notes</Label>
