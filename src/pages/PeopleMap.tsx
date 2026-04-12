@@ -8,14 +8,16 @@ import OneToOneView from "@/components/views/OneToOneView";
 import {
   people as initialPeople,
   groups as initialGroups,
-  oneToOnes,
+  oneToOnes as initialOneToOnes,
   type Person,
   type Group,
+  type OneToOne,
 } from "@/data/mockData";
 
 const PeopleMap = () => {
   const [people, setPeople] = useState<Person[]>(initialPeople);
   const [groups, setGroups] = useState<Group[]>(initialGroups);
+  const [oneToOnes, setOneToOnes] = useState<OneToOne[]>(initialOneToOnes);
 
   const handleUpdatePerson = (updated: Person) => {
     setPeople(prev => prev.map(p => p.id === updated.id ? updated : p));
@@ -51,11 +53,11 @@ const PeopleMap = () => {
         </TabsContent>
 
         <TabsContent value="groups">
-          <GroupsView people={people} groups={groups} onUpdateGroups={setGroups} />
+          <GroupsView people={people} groups={groups} onUpdateGroups={setGroups} onUpdatePerson={handleUpdatePerson} />
         </TabsContent>
 
         <TabsContent value="121">
-          <OneToOneView people={people} oneToOnes={oneToOnes} />
+          <OneToOneView people={people} oneToOnes={oneToOnes} onUpdateOneToOnes={setOneToOnes} onUpdatePerson={handleUpdatePerson} />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,13 +1,13 @@
 // ===== Types =====
 
-export type PersonStatus = "active" | "inactive" | "follow-up" | "on-leave";
+export type EngagementLevel = "leader" | "partner" | "regular" | "infrequent" | "missing";
 export type MeetingFrequency = "regular" | "infrequent" | "rarely";
 export type GroupType = "cell" | "resonate" | "yag";
 
 export interface Person {
   id: string;
   name: string;
-  status: PersonStatus;
+  engagement: EngagementLevel;
   tags: string[];
   notes: string;
   followUpNotes: string;
@@ -29,7 +29,39 @@ export interface OneToOne {
   notes: string;
 }
 
-// ===== Mock Data =====
+// ===== Labels & Colors =====
+
+export const engagementLabels: Record<EngagementLevel, string> = {
+  leader: "Leader",
+  partner: "Partner",
+  regular: "Regular",
+  infrequent: "Infrequent",
+  missing: "Missing",
+};
+
+export const engagementColors: Record<EngagementLevel, string> = {
+  leader: "bg-primary text-primary-foreground",
+  partner: "bg-soft-blue text-foreground",
+  regular: "bg-success text-success-foreground",
+  infrequent: "bg-warm-gold text-primary-foreground",
+  missing: "bg-destructive text-destructive-foreground",
+};
+
+export const engagementDotColors: Record<EngagementLevel, string> = {
+  leader: "bg-primary",
+  partner: "bg-soft-blue",
+  regular: "bg-success",
+  infrequent: "bg-warm-gold",
+  missing: "bg-destructive",
+};
+
+export const engagementBorderColors: Record<EngagementLevel, string> = {
+  leader: "border-primary/40",
+  partner: "border-soft-blue",
+  regular: "border-success/40",
+  infrequent: "border-warm-gold/60",
+  missing: "border-destructive/40",
+};
 
 export const ministries = [
   "Worship", "Pulpit", "Welcoming", "Bible Quest", "Read & Learn",
@@ -37,112 +69,138 @@ export const ministries = [
   "Prayer", "Children's Ministry", "Youth", "Missions", "Admin",
 ];
 
+export const groupTypeLabels: Record<GroupType, string> = {
+  cell: "Cell Group",
+  resonate: "Resonate",
+  yag: "YAG",
+};
+
+export const groupTypeColors: Record<GroupType, string> = {
+  cell: "bg-soft-blue text-foreground",
+  resonate: "bg-soft-green text-foreground",
+  yag: "bg-warm-gold-light text-foreground",
+};
+
+export const frequencyColors: Record<MeetingFrequency, string> = {
+  regular: "bg-success text-success-foreground",
+  infrequent: "bg-warm-gold text-primary-foreground",
+  rarely: "bg-muted text-muted-foreground",
+};
+
+export const frequencyLabels: Record<MeetingFrequency, string> = {
+  regular: "Regular",
+  infrequent: "Infrequent",
+  rarely: "Rarely",
+};
+
+// ===== Mock Data =====
+
 export const people: Person[] = [
-  { id: "1", name: "Leon", status: "active", tags: ["guys-121"], notes: "", followUpNotes: "", ministries: ["Worship"] },
-  { id: "2", name: "Shawna", status: "active", tags: [], notes: "", followUpNotes: "", ministries: ["Welcoming"] },
-  { id: "3", name: "Jeremiah", status: "active", tags: [], notes: "", followUpNotes: "", ministries: ["YAG"] },
-  { id: "4", name: "Josh", status: "active", tags: [], notes: "", followUpNotes: "", ministries: ["Resonate"] },
-  { id: "5", name: "Jobo", status: "active", tags: [], notes: "", followUpNotes: "", ministries: ["Cell Groups"] },
-  { id: "6", name: "Mei Yun", status: "active", tags: [], notes: "", followUpNotes: "", ministries: ["Prayer"] },
-  { id: "7", name: "Zhang Teng", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "8", name: "Leslie", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "9", name: "Celine", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "10", name: "Angeline", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "11", name: "Daniel", status: "active", tags: [], notes: "", followUpNotes: "", ministries: ["Media / AV"] },
-  { id: "12", name: "Esther", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "13", name: "Kenneth", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "14", name: "Brendan", status: "active", tags: ["newcomer"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "15", name: "Reeve", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "16", name: "Eugene", status: "active", tags: ["newcomer"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "17", name: "Charissa", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "18", name: "Job", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "19", name: "Jerry", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "20", name: "Jayne Lim", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "21", name: "Hannah", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "22", name: "Amanda G", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "23", name: "Pris", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "24", name: "Jeremy Yap", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "25", name: "Oli", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "26", name: "Valery", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "27", name: "Dave", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "28", name: "Zech", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "29", name: "Dylan", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "30", name: "Amanda T", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "31", name: "Kitty", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "32", name: "Kell", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "33", name: "Wei Ying", status: "active", tags: ["irregular-50"], notes: "Irregular (50%)", followUpNotes: "", ministries: [] },
-  { id: "34", name: "Joanne T", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "35", name: "Ian", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "36", name: "Keziah", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "37", name: "Teddy", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "38", name: "Joey", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "39", name: "Denise Lee", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "40", name: "Stella", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "41", name: "Janan", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "42", name: "Jess", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "43", name: "Chia Chiu", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "44", name: "Kah Yee", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "45", name: "Cody", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "46", name: "Joel", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "47", name: "Shaun", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "48", name: "Calvin", status: "active", tags: ["unmet-regular"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "49", name: "Charlston", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "50", name: "Charmaine", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "51", name: "Mark", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "52", name: "Lun", status: "active", tags: ["unmet-regular"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "53", name: "Sharne", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "54", name: "Bry", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "55", name: "Net", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "56", name: "Kit Mun", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "57", name: "Rachel", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "58", name: "Debs", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "59", name: "Ame", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "60", name: "Anderson", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "61", name: "Jia Hong", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "62", name: "Ashur", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "63", name: "Yuxin", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "64", name: "Kai Yue", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "65", name: "Titus", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "66", name: "Jun Fu", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "67", name: "Scarlett (NYP)", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "68", name: "Symphonie", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "69", name: "Calista", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "70", name: "Natalie", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "71", name: "Nathan", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "72", name: "Thaddeus", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "73", name: "Elijah", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "74", name: "Nigel", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "75", name: "Lincoln", status: "active", tags: ["guys-121"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "76", name: "Jayne Lee", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "77", name: "Wen Jun", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "78", name: "Matthew", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "79", name: "Kai Yat", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "80", name: "Shaoqi", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "81", name: "Gladys", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "82", name: "Azel", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "83", name: "Renae", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "84", name: "Alfred", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "85", name: "Jia Jun", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "86", name: "Luke", status: "active", tags: ["unmet-irregular"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "87", name: "Shin", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "88", name: "Brendan K", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "89", name: "Terence", status: "active", tags: ["guys-121"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "90", name: "Grace Mao", status: "active", tags: ["partner"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "91", name: "Grace Seah", status: "active", tags: ["partner"], notes: "", followUpNotes: "", ministries: [] },
-  { id: "92", name: "Beat", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "93", name: "Cephas", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "94", name: "Jolynn", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "95", name: "Derek", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "96", name: "Wen Hong", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "97", name: "Ryan", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "98", name: "Joyce", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "99", name: "Stephilma", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "100", name: "Wen Jing", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "101", name: "Hannah T", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "102", name: "Shang Ji", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "103", name: "Samuel", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "104", name: "Andre", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
-  { id: "105", name: "Bingwen", status: "active", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "1", name: "Leon", engagement: "leader", tags: ["guys-121"], notes: "", followUpNotes: "", ministries: ["Worship"] },
+  { id: "2", name: "Shawna", engagement: "partner", tags: [], notes: "", followUpNotes: "", ministries: ["Welcoming"] },
+  { id: "3", name: "Jeremiah", engagement: "leader", tags: [], notes: "", followUpNotes: "", ministries: ["YAG"] },
+  { id: "4", name: "Josh", engagement: "partner", tags: [], notes: "", followUpNotes: "", ministries: ["Resonate"] },
+  { id: "5", name: "Jobo", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: ["Cell Groups"] },
+  { id: "6", name: "Mei Yun", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: ["Prayer"] },
+  { id: "7", name: "Zhang Teng", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "8", name: "Leslie", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "9", name: "Celine", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "10", name: "Angeline", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "11", name: "Daniel", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: ["Media / AV"] },
+  { id: "12", name: "Esther", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "13", name: "Kenneth", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "14", name: "Brendan", engagement: "infrequent", tags: ["newcomer"], notes: "", followUpNotes: "", ministries: [] },
+  { id: "15", name: "Reeve", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "16", name: "Eugene", engagement: "infrequent", tags: ["newcomer"], notes: "", followUpNotes: "", ministries: [] },
+  { id: "17", name: "Charissa", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "18", name: "Job", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "19", name: "Jerry", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "20", name: "Jayne Lim", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "21", name: "Hannah", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "22", name: "Amanda G", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "23", name: "Pris", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "24", name: "Jeremy Yap", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "25", name: "Oli", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "26", name: "Valery", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "27", name: "Dave", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "28", name: "Zech", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "29", name: "Dylan", engagement: "infrequent", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "30", name: "Amanda T", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "31", name: "Kitty", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "32", name: "Kell", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "33", name: "Wei Ying", engagement: "infrequent", tags: [], notes: "Irregular (50%)", followUpNotes: "", ministries: [] },
+  { id: "34", name: "Joanne T", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "35", name: "Ian", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "36", name: "Keziah", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "37", name: "Teddy", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "38", name: "Joey", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "39", name: "Denise Lee", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "40", name: "Stella", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "41", name: "Janan", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "42", name: "Jess", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "43", name: "Chia Chiu", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "44", name: "Kah Yee", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "45", name: "Cody", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "46", name: "Joel", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "47", name: "Shaun", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "48", name: "Calvin", engagement: "missing", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "49", name: "Charlston", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "50", name: "Charmaine", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "51", name: "Mark", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "52", name: "Lun", engagement: "missing", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "53", name: "Sharne", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "54", name: "Bry", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "55", name: "Net", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "56", name: "Kit Mun", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "57", name: "Rachel", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "58", name: "Debs", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "59", name: "Ame", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "60", name: "Anderson", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "61", name: "Jia Hong", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "62", name: "Ashur", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "63", name: "Yuxin", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "64", name: "Kai Yue", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "65", name: "Titus", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "66", name: "Jun Fu", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "67", name: "Scarlett (NYP)", engagement: "infrequent", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "68", name: "Symphonie", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "69", name: "Calista", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "70", name: "Natalie", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "71", name: "Nathan", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "72", name: "Thaddeus", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "73", name: "Elijah", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "74", name: "Nigel", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "75", name: "Lincoln", engagement: "leader", tags: ["guys-121"], notes: "", followUpNotes: "", ministries: [] },
+  { id: "76", name: "Jayne Lee", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "77", name: "Wen Jun", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "78", name: "Matthew", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "79", name: "Kai Yat", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "80", name: "Shaoqi", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "81", name: "Gladys", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "82", name: "Azel", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "83", name: "Renae", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "84", name: "Alfred", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "85", name: "Jia Jun", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "86", name: "Luke", engagement: "missing", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "87", name: "Shin", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "88", name: "Brendan K", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "89", name: "Terence", engagement: "leader", tags: ["guys-121"], notes: "", followUpNotes: "", ministries: [] },
+  { id: "90", name: "Grace Mao", engagement: "partner", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "91", name: "Grace Seah", engagement: "partner", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "92", name: "Beat", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "93", name: "Cephas", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "94", name: "Jolynn", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "95", name: "Derek", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "96", name: "Wen Hong", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "97", name: "Ryan", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "98", name: "Joyce", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "99", name: "Stephilma", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "100", name: "Wen Jing", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "101", name: "Hannah T", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "102", name: "Shang Ji", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "103", name: "Samuel", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "104", name: "Andre", engagement: "infrequent", tags: [], notes: "", followUpNotes: "", ministries: [] },
+  { id: "105", name: "Bingwen", engagement: "regular", tags: [], notes: "", followUpNotes: "", ministries: [] },
 ];
 
 export const groups: Group[] = [
@@ -170,42 +228,3 @@ export const oneToOnes: OneToOne[] = [
   { id: "121-10", personA: "1", personB: "51", frequency: "regular", notes: "" },
   { id: "121-11", personA: "1", personB: "103", frequency: "infrequent", notes: "" },
 ];
-
-// Helper
-export const statusColors: Record<PersonStatus, string> = {
-  active: "bg-success text-success-foreground",
-  inactive: "bg-muted text-muted-foreground",
-  "follow-up": "bg-warm-gold text-primary-foreground",
-  "on-leave": "bg-soft-blue text-foreground",
-};
-
-export const statusLabels: Record<PersonStatus, string> = {
-  active: "Active",
-  inactive: "Inactive",
-  "follow-up": "Follow-up",
-  "on-leave": "On Leave",
-};
-
-export const groupTypeLabels: Record<GroupType, string> = {
-  cell: "Cell Group",
-  resonate: "Resonate",
-  yag: "YAG",
-};
-
-export const groupTypeColors: Record<GroupType, string> = {
-  cell: "bg-soft-blue text-foreground",
-  resonate: "bg-soft-green text-foreground",
-  yag: "bg-warm-gold-light text-foreground",
-};
-
-export const frequencyColors: Record<MeetingFrequency, string> = {
-  regular: "bg-success text-success-foreground",
-  infrequent: "bg-warm-gold text-primary-foreground",
-  rarely: "bg-muted text-muted-foreground",
-};
-
-export const frequencyLabels: Record<MeetingFrequency, string> = {
-  regular: "Regular",
-  infrequent: "Infrequent",
-  rarely: "Rarely",
-};

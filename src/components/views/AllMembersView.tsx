@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import PersonChip from "@/components/PersonChip";
 import {
-  type Person, type PersonStatus,
-  ministries, statusColors, statusLabels,
+  type Person, type EngagementLevel,
+  ministries, engagementColors, engagementLabels,
 } from "@/data/mockData";
 
 interface Props {
@@ -24,8 +25,8 @@ interface Props {
 const AllMembersView = ({ people, onUpdatePerson }: Props) => {
   const [search, setSearch] = useState("");
   const [filterMinistry, setFilterMinistry] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortField, setSortField] = useState<"name" | "status">("name");
+  const [filterEngagement, setFilterEngagement] = useState("all");
+  const [sortField, setSortField] = useState<"name" | "engagement">("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "cards">("list");
   const [editPerson, setEditPerson] = useState<Person | null>(null);
@@ -38,17 +39,17 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
         p.tags.some(t => t.toLowerCase().includes(s)) ||
         p.notes.toLowerCase().includes(s);
       const matchesMinistry = filterMinistry === "all" || p.ministries.includes(filterMinistry);
-      const matchesStatus = filterStatus === "all" || p.status === filterStatus;
-      return matchesSearch && matchesMinistry && matchesStatus;
+      const matchesEngagement = filterEngagement === "all" || p.engagement === filterEngagement;
+      return matchesSearch && matchesMinistry && matchesEngagement;
     });
     result.sort((a, b) => {
       const cmp = String(a[sortField]).localeCompare(String(b[sortField]));
       return sortAsc ? cmp : -cmp;
     });
     return result;
-  }, [people, search, filterMinistry, filterStatus, sortField, sortAsc]);
+  }, [people, search, filterMinistry, filterEngagement, sortField, sortAsc]);
 
-  const toggleSort = (field: "name" | "status") => {
+  const toggleSort = (field: "name" | "engagement") => {
     if (sortField === field) setSortAsc(!sortAsc);
     else { setSortField(field); setSortAsc(true); }
   };
@@ -58,7 +59,7 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
     return sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
-  const activeFilters = [filterMinistry, filterStatus].filter(f => f !== "all").length;
+  const activeFilters = [filterMinistry, filterEngagement].filter(f => f !== "all").length;
 
   return (
     <div>
@@ -68,20 +69,10 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
           {filtered.length} {filtered.length === 1 ? "person" : "people"}
         </p>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
-          <Button
-            variant={viewMode === "list" ? "default" : "ghost"}
-            size="sm"
-            className="h-8 px-3"
-            onClick={() => setViewMode("list")}
-          >
+          <Button variant={viewMode === "list" ? "default" : "ghost"} size="sm" className="h-8 px-3" onClick={() => setViewMode("list")}>
             <List size={16} />
           </Button>
-          <Button
-            variant={viewMode === "cards" ? "default" : "ghost"}
-            size="sm"
-            className="h-8 px-3"
-            onClick={() => setViewMode("cards")}
-          >
+          <Button variant={viewMode === "cards" ? "default" : "ghost"} size="sm" className="h-8 px-3" onClick={() => setViewMode("cards")}>
             <Grid3X3 size={16} />
           </Button>
         </div>
@@ -108,15 +99,15 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
               {ministries.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-40 h-10"><SelectValue placeholder="Status" /></SelectTrigger>
+          <Select value={filterEngagement} onValueChange={setFilterEngagement}>
+            <SelectTrigger className="w-40 h-10"><SelectValue placeholder="Engagement" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              <SelectItem value="all">All Levels</SelectItem>
+              {(Object.entries(engagementLabels) as [string, string][]).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
           {activeFilters > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => { setFilterMinistry("all"); setFilterStatus("all"); }} className="gap-1 text-muted-foreground">
+            <Button variant="ghost" size="sm" onClick={() => { setFilterMinistry("all"); setFilterEngagement("all"); }} className="gap-1 text-muted-foreground">
               <X size={14} /> Clear
             </Button>
           )}
@@ -132,8 +123,8 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
                 <th className="text-left px-4 py-3 font-medium cursor-pointer select-none" onClick={() => toggleSort("name")}>
                   <span className="flex items-center gap-1">Name <SortIcon field="name" /></span>
                 </th>
-                <th className="text-left px-4 py-3 font-medium cursor-pointer select-none" onClick={() => toggleSort("status")}>
-                  <span className="flex items-center gap-1">Status <SortIcon field="status" /></span>
+                <th className="text-left px-4 py-3 font-medium cursor-pointer select-none" onClick={() => toggleSort("engagement")}>
+                  <span className="flex items-center gap-1">Engagement <SortIcon field="engagement" /></span>
                 </th>
                 <th className="text-left px-4 py-3 font-medium">Ministries</th>
                 <th className="text-left px-4 py-3 font-medium">Tags</th>
@@ -146,7 +137,7 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
                 <tr key={person.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{person.name}</td>
                   <td className="px-4 py-3">
-                    <Badge className={`${statusColors[person.status]} text-xs`}>{statusLabels[person.status]}</Badge>
+                    <Badge className={`${engagementColors[person.engagement]} text-xs`}>{engagementLabels[person.engagement]}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     {person.ministries.length === 0
@@ -182,15 +173,7 @@ const AllMembersView = ({ people, onUpdatePerson }: Props) => {
           {filtered.map(person => (
             <div key={person.id} className="bg-card rounded-lg border border-border p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-sm">
-                    {person.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-foreground">{person.name}</h3>
-                    <Badge className={`${statusColors[person.status]} text-xs mt-1`}>{statusLabels[person.status]}</Badge>
-                  </div>
-                </div>
+                <PersonChip person={person} onUpdatePerson={onUpdatePerson} />
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditPerson({ ...person })}><Edit2 size={14} /></Button>
               </div>
               {person.ministries.length > 0 && (
@@ -229,10 +212,10 @@ function EditPersonDialog({ person, onSave, onClose }: { person: Person; onSave:
             <Input value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} className="mt-1" />
           </div>
           <div>
-            <Label>Status</Label>
-            <Select value={draft.status} onValueChange={v => setDraft({ ...draft, status: v as PersonStatus })}>
+            <Label>Engagement</Label>
+            <Select value={draft.engagement} onValueChange={v => setDraft({ ...draft, engagement: v as EngagementLevel })}>
               <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>{Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+              <SelectContent>{(Object.entries(engagementLabels) as [string, string][]).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
