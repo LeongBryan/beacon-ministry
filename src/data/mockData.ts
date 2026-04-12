@@ -93,6 +93,11 @@ export const frequencyLabels: Record<MeetingFrequency, string> = {
   rarely: "Rarely",
 };
 
+export const predefinedTags = [
+  "guys-121", "girls-121", "newcomer", "baptized", "serving",
+  "student", "working-adult", "overseas", "ns", "married",
+];
+
 // ===== Mock Data =====
 
 export const people: Person[] = [

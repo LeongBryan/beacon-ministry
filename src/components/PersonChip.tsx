@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/popover";
 import {
   type Person, type EngagementLevel,
-  engagementLabels, engagementColors, engagementDotColors,
+  engagementLabels, engagementColors, engagementDotColors, predefinedTags,
 } from "@/data/mockData";
 
 interface PersonChipProps {
@@ -31,6 +31,12 @@ const PersonChip = ({
     onUpdatePerson({ ...person, engagement: level });
   };
 
+  const toggleTag = (tag: string) => {
+    const has = person.tags.includes(tag);
+    const newTags = has ? person.tags.filter(t => t !== tag) : [...person.tags, tag];
+    onUpdatePerson({ ...person, tags: newTags });
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -46,15 +52,10 @@ const PersonChip = ({
           }`}
         >
           <div className={`w-2.5 h-2.5 rounded-full ${engagementDotColors[person.engagement]}`} />
-          {!compact && (
-            <span className="font-medium text-foreground">{person.name}</span>
-          )}
-          {compact && (
-            <span className="font-medium text-foreground text-xs">{person.name}</span>
-          )}
+          <span className={`font-medium text-foreground ${compact ? "text-xs" : ""}`}>{person.name}</span>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3" align="start">
+      <PopoverContent className="w-72 p-3" align="start">
         <div className="space-y-3">
           <div>
             <p className="font-semibold text-sm text-foreground">{person.name}</p>
@@ -87,13 +88,24 @@ const PersonChip = ({
             </div>
           </div>
 
-          {person.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {person.tags.map(tag => (
-                <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Tags</p>
+            <div className="flex flex-wrap gap-1.5">
+              {predefinedTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`text-xs px-2 py-0.5 rounded-full border transition-all ${
+                    person.tags.includes(tag)
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {person.tags.includes(tag) ? "✓ " : ""}{tag}
+                </button>
               ))}
             </div>
-          )}
+          </div>
         </div>
       </PopoverContent>
     </Popover>
