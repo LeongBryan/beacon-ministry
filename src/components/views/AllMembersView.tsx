@@ -92,6 +92,54 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
   );
 }
 
+// Inline cell editor with popover multiselect
+function InlineCellSelect({ options, selected, multi, renderSelected, onChange }: {
+  options: string[];
+  selected: string[];
+  multi: boolean;
+  renderSelected: () => React.ReactNode;
+  onChange: (sel: string[]) => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <div className="cursor-pointer min-h-[24px]">{renderSelected()}</div>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2 max-h-60 overflow-y-auto" align="start">
+        {multi && (
+          <>
+            <button
+              onClick={() => onChange(selected.length === options.length ? [] : [...options])}
+              className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted font-medium text-primary"
+            >
+              {selected.length === options.length ? "Deselect All" : "Select All"}
+            </button>
+            <div className="border-t border-border my-1" />
+          </>
+        )}
+        {options.map(opt => (
+          <label key={opt} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+            {multi ? (
+              <Checkbox
+                checked={selected.includes(opt)}
+                onCheckedChange={() => onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt])}
+              />
+            ) : (
+              <input
+                type="radio"
+                checked={selected.includes(opt)}
+                onChange={() => onChange([opt])}
+                className="accent-primary"
+              />
+            )}
+            {opt}
+          </label>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const AllMembersView = ({ people, onUpdatePerson, onDeletePerson, ministries, roles, tags, onAddMinistry, onAddRole, onAddTag, onDeleteTag }: Props) => {
   const [search, setSearch] = useState("");
   const [filterMinistries, setFilterMinistries] = useState<string[]>([]);
