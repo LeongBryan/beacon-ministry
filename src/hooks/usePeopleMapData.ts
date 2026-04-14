@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  type Person, type Group, type OneToOne, type GroupType,
+  type Person, type Group, type OneToOne, type GroupType, type GroupLegend,
   people as initialPeople, groups as initialGroups,
   oneToOnes as initialOneToOnes, defaultGroupTypes,
   defaultMinistries, defaultRoles, defaultTags,
@@ -52,7 +52,7 @@ export function usePeopleMapData() {
       setGroups((gRes.data || []).map(r => ({
         id: r.id, typeId: r.type_id, name: r.name,
         members: r.members || [],
-        memberLegends: (r.member_legends as Record<string, string>) || {},
+        memberLegends: (r.member_legends as Record<string, GroupLegend>) || {},
       })));
       setOneToOnes((oRes.data || []).map(r => ({
         id: r.id, personA: r.person_a, personB: r.person_b,
@@ -137,7 +137,7 @@ export function usePeopleMapData() {
     setOneToOnes(prev => prev.filter(o => o.personA !== personId && o.personB !== personId));
     await Promise.all([
       supabase.from("people").delete().eq("id", personId),
-      supabase.from("one_to_ones").or(`person_a.eq.${personId},person_b.eq.${personId}`).delete(),
+      supabase.from("one_to_ones").delete().or(`person_a.eq.${personId},person_b.eq.${personId}`),
     ]);
     // Update groups in DB
     const { data: gData } = await supabase.from("groups").select("*");
