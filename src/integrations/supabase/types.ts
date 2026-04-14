@@ -14,7 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          id: string
+          type: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          type: string
+          value: string
+        }
+        Update: {
+          id?: string
+          type?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      group_types: {
+        Row: {
+          color: string
+          id: string
+          label: string
+        }
+        Insert: {
+          color: string
+          id: string
+          label: string
+        }
+        Update: {
+          color?: string
+          id?: string
+          label?: string
+        }
+        Relationships: []
+      }
+      groups: {
+        Row: {
+          id: string
+          member_legends: Json
+          members: string[]
+          name: string
+          type_id: string
+        }
+        Insert: {
+          id: string
+          member_legends?: Json
+          members?: string[]
+          name: string
+          type_id: string
+        }
+        Update: {
+          id?: string
+          member_legends?: Json
+          members?: string[]
+          name?: string
+          type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_type_id_fkey"
+            columns: ["type_id"]
+            isOneToOne: false
+            referencedRelation: "group_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      one_to_ones: {
+        Row: {
+          frequency: string
+          id: string
+          notes: string
+          person_a: string
+          person_b: string
+        }
+        Insert: {
+          frequency?: string
+          id: string
+          notes?: string
+          person_a: string
+          person_b: string
+        }
+        Update: {
+          frequency?: string
+          id?: string
+          notes?: string
+          person_a?: string
+          person_b?: string
+        }
+        Relationships: []
+      }
+      people: {
+        Row: {
+          created_at: string
+          engagement: string
+          follow_up_notes: string
+          id: string
+          ministries: string[]
+          name: string
+          notes: string
+          roles: string[]
+          tags: string[]
+        }
+        Insert: {
+          created_at?: string
+          engagement?: string
+          follow_up_notes?: string
+          id: string
+          ministries?: string[]
+          name: string
+          notes?: string
+          roles?: string[]
+          tags?: string[]
+        }
+        Update: {
+          created_at?: string
+          engagement?: string
+          follow_up_notes?: string
+          id?: string
+          ministries?: string[]
+          name?: string
+          notes?: string
+          roles?: string[]
+          tags?: string[]
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
