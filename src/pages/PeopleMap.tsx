@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Users, Network, UserCheck, Plus, Settings } from "lucide-react";
+import { useState, useRef } from "react";
+import { Users, Network, UserCheck, Plus, Settings, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -9,88 +9,55 @@ import {
 import AllMembersView from "@/components/views/AllMembersView";
 import GroupsView from "@/components/views/GroupsView";
 import OneToOneView from "@/components/views/OneToOneView";
-import {
-  people as initialPeople,
-  groups as initialGroups,
-  oneToOnes as initialOneToOnes,
-  defaultMinistries,
-  defaultRoles,
-  defaultTags,
-  defaultGroupTypes,
-  type Person,
-  type Group,
-  type OneToOne,
-  type GroupType as GroupTypeT,
-} from "@/data/mockData";
+import { usePeopleMapData } from "@/hooks/usePeopleMapData";
 
 const PeopleMap = () => {
-  const [people, setPeople] = useState<Person[]>(initialPeople);
-  const [groups, setGroups] = useState<Group[]>(initialGroups);
-  const [oneToOnes, setOneToOnes] = useState<OneToOne[]>(initialOneToOnes);
+  const {
+    people, groups, oneToOnes, groupTypes, ministries, roles, tags, loading,
+    updatePerson, addPerson, deletePerson,
+    updateGroups, updateOneToOnes, updateGroupTypes,
+    addCategory, deleteCategory,
+    exportData, importData,
+  } = usePeopleMapData();
 
-  // Dynamic categories
-  const [ministries, setMinistries] = useState<string[]>(defaultMinistries);
-  const [roles, setRoles] = useState<string[]>(defaultRoles);
-  const [tags, setTags] = useState<string[]>(defaultTags);
-  const [groupTypes, setGroupTypes] = useState<GroupTypeT[]>(defaultGroupTypes);
-
-  // Settings dialog
   const [showSettings, setShowSettings] = useState(false);
   const [newMinistry, setNewMinistry] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newTag, setNewTag] = useState("");
-
-  // Add person dialog
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonName, setNewPersonName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpdatePerson = (updated: Person) => {
-    setPeople(prev => prev.map(p => p.id === updated.id ? updated : p));
-  };
-
-  const handleDeletePerson = (personId: string) => {
-    setPeople(prev => prev.filter(p => p.id !== personId));
-    setGroups(prev => prev.map(g => ({ ...g, members: g.members.filter(m => m !== personId) })));
-    setOneToOnes(prev => prev.filter(o => o.personA !== personId && o.personB !== personId));
-  };
-
-  const handleAddPerson = () => {
+  const handleAddPerson = async () => {
     if (!newPersonName.trim()) return;
-    const newPerson: Person = {
-      id: `p-${Date.now()}`,
-      name: newPersonName.trim(),
-      engagement: "regular",
-      roles: [],
-      tags: [],
-      notes: "",
-      followUpNotes: "",
-      ministries: [],
-    };
-    setPeople(prev => [...prev, newPerson]);
+    await addPerson(newPersonName.trim());
     setNewPersonName("");
     setShowAddPerson(false);
   };
 
-  const addMinistry = () => {
-    if (newMinistry.trim() && !ministries.includes(newMinistry.trim())) {
-      setMinistries(prev => [...prev, newMinistry.trim()]);
-      setNewMinistry("");
-    }
+  const handleAddMinistry = () => {
+    if (newMinistry.trim()) { addCategory("ministry", newMinistry.trim()); setNewMinistry(""); }
+  };
+  const handleAddRole = () => {
+    if (newRole.trim()) { addCategory("role", newRole.trim()); setNewRole(""); }
+  };
+  const handleAddTag = () => {
+    if (newTag.trim()) { addCategory("tag", newTag.trim()); setNewTag(""); }
   };
 
-  const addRole = () => {
-    if (newRole.trim() && !roles.includes(newRole.trim())) {
-      setRoles(prev => [...prev, newRole.trim()]);
-      setNewRole("");
-    }
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) importData(file);
+    e.target.value = "";
   };
 
-  const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      setTags(prev => [...prev, newTag.trim()]);
-      setNewTag("");
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading data…</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -99,12 +66,19 @@ const PeopleMap = () => {
           <h1 className="text-2xl font-semibold text-foreground">People Map</h1>
           <p className="text-muted-foreground mt-1">{people.length} people</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="lg" className="gap-2" onClick={() => setShowSettings(true)}>
-            <Settings size={18} /> Manage Categories
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="gap-2" onClick={exportData}>
+            <Download size={16} /> Export
           </Button>
-          <Button size="lg" className="gap-2" onClick={() => setShowAddPerson(true)}>
-            <Plus size={18} /> Add Person
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={16} /> Import
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImportFile} />
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowSettings(true)}>
+            <Settings size={16} /> Categories
+          </Button>
+          <Button size="sm" className="gap-2" onClick={() => setShowAddPerson(true)}>
+            <Plus size={16} /> Add Person
           </Button>
         </div>
       </div>
@@ -125,15 +99,15 @@ const PeopleMap = () => {
         <TabsContent value="all">
           <AllMembersView
             people={people}
-            onUpdatePerson={handleUpdatePerson}
-            onDeletePerson={handleDeletePerson}
+            onUpdatePerson={updatePerson}
+            onDeletePerson={deletePerson}
             ministries={ministries}
             roles={roles}
             tags={tags}
-            onAddMinistry={(m) => { if (!ministries.includes(m)) setMinistries(prev => [...prev, m]); }}
-            onAddRole={(r) => { if (!roles.includes(r)) setRoles(prev => [...prev, r]); }}
-            onAddTag={(t) => { if (!tags.includes(t)) setTags(prev => [...prev, t]); }}
-            onDeleteTag={(t) => setTags(prev => prev.filter(x => x !== t))}
+            onAddMinistry={(m) => addCategory("ministry", m)}
+            onAddRole={(r) => addCategory("role", r)}
+            onAddTag={(t) => addCategory("tag", t)}
+            onDeleteTag={(t) => deleteCategory("tag", t)}
           />
         </TabsContent>
 
@@ -141,10 +115,10 @@ const PeopleMap = () => {
           <GroupsView
             people={people}
             groups={groups}
-            onUpdateGroups={setGroups}
-            onUpdatePerson={handleUpdatePerson}
+            onUpdateGroups={updateGroups}
+            onUpdatePerson={updatePerson}
             groupTypes={groupTypes}
-            onUpdateGroupTypes={setGroupTypes}
+            onUpdateGroupTypes={updateGroupTypes}
             tags={tags}
             ministries={ministries}
             roles={roles}
@@ -155,8 +129,8 @@ const PeopleMap = () => {
           <OneToOneView
             people={people}
             oneToOnes={oneToOnes}
-            onUpdateOneToOnes={setOneToOnes}
-            onUpdatePerson={handleUpdatePerson}
+            onUpdateOneToOnes={updateOneToOnes}
+            onUpdatePerson={updatePerson}
             tags={tags}
             ministries={ministries}
             roles={roles}
@@ -183,54 +157,51 @@ const PeopleMap = () => {
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Manage Categories</DialogTitle></DialogHeader>
           <div className="space-y-6 mt-2">
-            {/* Ministries */}
             <div>
               <p className="font-medium text-sm mb-2">Ministries</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {ministries.map(m => (
                   <span key={m} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
                     {m}
-                    <button onClick={() => setMinistries(prev => prev.filter(x => x !== m))} className="text-muted-foreground hover:text-destructive">×</button>
+                    <button onClick={() => deleteCategory("ministry", m)} className="text-muted-foreground hover:text-destructive">×</button>
                   </span>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input value={newMinistry} onChange={e => setNewMinistry(e.target.value)} placeholder="Add ministry…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && addMinistry()} />
-                <Button size="sm" onClick={addMinistry}>Add</Button>
+                <Input value={newMinistry} onChange={e => setNewMinistry(e.target.value)} placeholder="Add ministry…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && handleAddMinistry()} />
+                <Button size="sm" onClick={handleAddMinistry}>Add</Button>
               </div>
             </div>
 
-            {/* Roles */}
             <div>
               <p className="font-medium text-sm mb-2">Roles</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {roles.map(r => (
                   <span key={r} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
                     {r}
-                    <button onClick={() => setRoles(prev => prev.filter(x => x !== r))} className="text-muted-foreground hover:text-destructive">×</button>
+                    <button onClick={() => deleteCategory("role", r)} className="text-muted-foreground hover:text-destructive">×</button>
                   </span>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="Add role…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && addRole()} />
-                <Button size="sm" onClick={addRole}>Add</Button>
+                <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="Add role…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && handleAddRole()} />
+                <Button size="sm" onClick={handleAddRole}>Add</Button>
               </div>
             </div>
 
-            {/* Tags */}
             <div>
               <p className="font-medium text-sm mb-2">Tags</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {tags.map(t => (
                   <span key={t} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
                     {t}
-                    <button onClick={() => setTags(prev => prev.filter(x => x !== t))} className="text-muted-foreground hover:text-destructive">×</button>
+                    <button onClick={() => deleteCategory("tag", t)} className="text-muted-foreground hover:text-destructive">×</button>
                   </span>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Add tag…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && addTag()} />
-                <Button size="sm" onClick={addTag}>Add</Button>
+                <Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Add tag…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && handleAddTag()} />
+                <Button size="sm" onClick={handleAddTag}>Add</Button>
               </div>
             </div>
           </div>
