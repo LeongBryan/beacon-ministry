@@ -256,31 +256,55 @@ const AllMembersView = ({ people, onUpdatePerson, onDeletePerson, ministries, ro
                   {isCol("name") && <td className="px-4 py-3 font-medium">{person.name}</td>}
                   {isCol("engagement") && (
                     <td className="px-4 py-3">
-                      <Badge className={`${engagementColors[person.engagement]} text-xs`}>{engagementLabels[person.engagement]}</Badge>
+                      <InlineCellSelect
+                        options={Object.keys(engagementLabels) as string[]}
+                        selected={[person.engagement]}
+                        multi={false}
+                        renderSelected={() => <Badge className={`${engagementColors[person.engagement]} text-xs cursor-pointer`}>{engagementLabels[person.engagement]}</Badge>}
+                        onChange={(sel) => onUpdatePerson({ ...person, engagement: sel[0] as EngagementLevel })}
+                      />
                     </td>
                   )}
                   {isCol("roles") && (
                     <td className="px-4 py-3">
-                      {person.roles.length === 0
-                        ? <span className="text-muted-foreground italic text-xs">—</span>
-                        : <div className="flex flex-wrap gap-1">{person.roles.map(r => <Badge key={r} variant="outline" className="text-xs">{r}</Badge>)}</div>
-                      }
+                      <InlineCellSelect
+                        options={roles}
+                        selected={person.roles}
+                        multi
+                        renderSelected={() => person.roles.length === 0
+                          ? <span className="text-muted-foreground italic text-xs cursor-pointer hover:text-foreground">—</span>
+                          : <div className="flex flex-wrap gap-1 cursor-pointer">{person.roles.map(r => <Badge key={r} variant="outline" className="text-xs">{r}</Badge>)}</div>
+                        }
+                        onChange={(sel) => onUpdatePerson({ ...person, roles: sel })}
+                      />
                     </td>
                   )}
                   {isCol("ministries") && (
                     <td className="px-4 py-3">
-                      {person.ministries.length === 0
-                        ? <span className="text-muted-foreground italic text-xs">—</span>
-                        : <div className="flex flex-wrap gap-1">{person.ministries.map(m => <Badge key={m} variant="outline" className="text-xs">{m}</Badge>)}</div>
-                      }
+                      <InlineCellSelect
+                        options={ministries}
+                        selected={person.ministries}
+                        multi
+                        renderSelected={() => person.ministries.length === 0
+                          ? <span className="text-muted-foreground italic text-xs cursor-pointer hover:text-foreground">—</span>
+                          : <div className="flex flex-wrap gap-1 cursor-pointer">{person.ministries.map(m => <Badge key={m} variant="outline" className="text-xs">{m}</Badge>)}</div>
+                        }
+                        onChange={(sel) => onUpdatePerson({ ...person, ministries: sel })}
+                      />
                     </td>
                   )}
                   {isCol("tags") && (
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {person.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}
-                        {person.tags.length === 0 && <span className="text-muted-foreground italic text-xs">—</span>}
-                      </div>
+                      <InlineCellSelect
+                        options={allTagsInUse}
+                        selected={person.tags}
+                        multi
+                        renderSelected={() => person.tags.length === 0
+                          ? <span className="text-muted-foreground italic text-xs cursor-pointer hover:text-foreground">—</span>
+                          : <div className="flex flex-wrap gap-1 cursor-pointer">{person.tags.map(tag => <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>)}</div>
+                        }
+                        onChange={(sel) => onUpdatePerson({ ...person, tags: sel })}
+                      />
                     </td>
                   )}
                   {isCol("notes") && (
