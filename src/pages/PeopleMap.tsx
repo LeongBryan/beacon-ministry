@@ -89,7 +89,7 @@ const PeopleMap = () => {
             <Users size={16} /> All Members
           </TabsTrigger>
           <TabsTrigger value="groups" className="gap-2 px-4 h-10 text-sm">
-            <Network size={16} /> Groups
+            <Network size={16} /> Small Groups
           </TabsTrigger>
           <TabsTrigger value="121" className="gap-2 px-4 h-10 text-sm">
             <UserCheck size={16} /> 1-to-1
@@ -99,6 +99,8 @@ const PeopleMap = () => {
         <TabsContent value="all">
           <AllMembersView
             people={people}
+            groups={groups}
+            groupTypes={groupTypes}
             onUpdatePerson={updatePerson}
             onDeletePerson={deletePerson}
             ministries={ministries}
@@ -158,9 +160,9 @@ const PeopleMap = () => {
           <DialogHeader><DialogTitle>Manage Categories</DialogTitle></DialogHeader>
           <div className="space-y-6 mt-2">
             <div>
-              <p className="font-medium text-sm mb-2">Ministries</p>
+              <p className="font-medium text-sm mb-2">Ministries (Serving In)</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {ministries.map(m => (
+                {[...ministries].sort().map(m => (
                   <span key={m} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
                     {m}
                     <button onClick={() => deleteCategory("ministry", m)} className="text-muted-foreground hover:text-destructive">×</button>
@@ -176,7 +178,7 @@ const PeopleMap = () => {
             <div>
               <p className="font-medium text-sm mb-2">Roles</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {roles.map(r => (
+                {[...roles].sort().map(r => (
                   <span key={r} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
                     {r}
                     <button onClick={() => deleteCategory("role", r)} className="text-muted-foreground hover:text-destructive">×</button>
@@ -192,7 +194,7 @@ const PeopleMap = () => {
             <div>
               <p className="font-medium text-sm mb-2">Tags</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {tags.map(t => (
+                {[...tags].sort().map(t => (
                   <span key={t} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
                     {t}
                     <button onClick={() => deleteCategory("tag", t)} className="text-muted-foreground hover:text-destructive">×</button>
