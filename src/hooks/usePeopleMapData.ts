@@ -83,7 +83,7 @@ export function usePeopleMapData() {
       await supabase.from("groups").upsert(
         initialGroups.map(g => ({
           id: g.id, type_id: g.typeId, name: g.name,
-          members: g.members, member_legends: g.memberMeta,
+          members: g.members, member_legends: g.memberMeta as any,
         }))
       );
       await supabase.from("one_to_ones").upsert(
@@ -152,7 +152,7 @@ export function usePeopleMapData() {
     if (toDelete.length) await supabase.from("groups").delete().in("id", toDelete);
     if (newGroups.length) {
       await supabase.from("groups").upsert(
-        newGroups.map(g => ({ id: g.id, type_id: g.typeId, name: g.name, members: g.members, member_legends: g.memberMeta }))
+        newGroups.map(g => ({ id: g.id, type_id: g.typeId, name: g.name, members: g.members, member_legends: g.memberMeta as any }))
       );
     }
   }, []);
@@ -239,7 +239,7 @@ export function usePeopleMapData() {
       if (data.groups?.length) {
         await supabase.from("groups").upsert(data.groups.map((g: Group) => ({
           id: g.id, type_id: g.typeId, name: g.name, members: g.members,
-          member_legends: g.memberMeta || g.memberLegends || {},
+          member_legends: (g.memberMeta || (g as any).memberLegends || {}) as any,
         })));
       }
       if (data.oneToOnes?.length) {
