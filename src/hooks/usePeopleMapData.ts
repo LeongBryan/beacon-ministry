@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  type Person, type Group, type OneToOne, type GroupType, type GroupLegend,
+  type Person, type Group, type OneToOne, type GroupType, type GroupMemberMeta,
   people as initialPeople, groups as initialGroups,
   oneToOnes as initialOneToOnes, defaultGroupTypes,
   defaultMinistries, defaultRoles, defaultTags,
@@ -19,7 +19,6 @@ export function usePeopleMapData() {
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
 
-  // Load all data on mount
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -37,7 +36,6 @@ export function usePeopleMapData() {
         supabase.from("categories").select("*"),
       ]);
 
-      // If DB is empty, seed with initial data
       if (!pRes.data?.length) {
         await seedInitialData();
         return;
@@ -52,7 +50,7 @@ export function usePeopleMapData() {
       setGroups((gRes.data || []).map(r => ({
         id: r.id, typeId: r.type_id, name: r.name,
         members: r.members || [],
-        memberLegends: (r.member_legends as Record<string, GroupLegend>) || {},
+        memberMeta: (r.member_legends as Record<string, GroupMemberMeta>) || {},
       })));
       setOneToOnes((oRes.data || []).map(r => ({
         id: r.id, personA: r.person_a, personB: r.person_b,
@@ -72,7 +70,6 @@ export function usePeopleMapData() {
 
   async function seedInitialData() {
     try {
-      // Seed group types first (groups reference them)
       await supabase.from("group_types").upsert(
         defaultGroupTypes.map(t => ({ id: t.id, label: t.label, color: t.color }))
       );
@@ -86,7 +83,7 @@ export function usePeopleMapData() {
       await supabase.from("groups").upsert(
         initialGroups.map(g => ({
           id: g.id, type_id: g.typeId, name: g.name,
-          members: g.members, member_legends: g.memberLegends,
+          members: g.members, member_legends: g.memberMeta,
         }))
       );
       await supabase.from("one_to_ones").upsert(
@@ -95,7 +92,6 @@ export function usePeopleMapData() {
           frequency: o.frequency, notes: o.notes,
         }))
       );
-      // Seed categories
       const catRows = [
         ...defaultMinistries.map(v => ({ type: "ministry", value: v })),
         ...defaultRoles.map(v => ({ type: "role", value: v })),
@@ -103,7 +99,6 @@ export function usePeopleMapData() {
       ];
       await supabase.from("categories").upsert(catRows, { onConflict: "type,value" });
 
-      // Reload
       initialized.current = false;
       await loadAll();
     } catch (e) {
@@ -111,7 +106,6 @@ export function usePeopleMapData() {
     }
   }
 
-  // === Person CRUD ===
   const updatePerson = useCallback(async (updated: Person) => {
     setPeople(prev => prev.map(p => p.id === updated.id ? updated : p));
     await supabase.from("people").update({
@@ -139,7 +133,6 @@ export function usePeopleMapData() {
       supabase.from("people").delete().eq("id", personId),
       supabase.from("one_to_ones").delete().or(`person_a.eq.${personId},person_b.eq.${personId}`),
     ]);
-    // Update groups in DB
     const { data: gData } = await supabase.from("groups").select("*");
     if (gData) {
       for (const g of gData) {
@@ -150,10 +143,8 @@ export function usePeopleMapData() {
     }
   }, []);
 
-  // === Groups CRUD ===
   const updateGroups = useCallback(async (newGroups: Group[]) => {
     setGroups(newGroups);
-    // Sync to DB - upsert all and delete removed
     const ids = newGroups.map(g => g.id);
     const { data: existing } = await supabase.from("groups").select("id");
     const existingIds = (existing || []).map(r => r.id);
@@ -161,12 +152,11 @@ export function usePeopleMapData() {
     if (toDelete.length) await supabase.from("groups").delete().in("id", toDelete);
     if (newGroups.length) {
       await supabase.from("groups").upsert(
-        newGroups.map(g => ({ id: g.id, type_id: g.typeId, name: g.name, members: g.members, member_legends: g.memberLegends }))
+        newGroups.map(g => ({ id: g.id, type_id: g.typeId, name: g.name, members: g.members, member_legends: g.memberMeta }))
       );
     }
   }, []);
 
-  // === OneToOnes CRUD ===
   const updateOneToOnes = useCallback(async (newOtos: OneToOne[]) => {
     setOneToOnes(newOtos);
     const ids = newOtos.map(o => o.id);
@@ -181,7 +171,6 @@ export function usePeopleMapData() {
     }
   }, []);
 
-  // === Group Types CRUD ===
   const updateGroupTypes = useCallback(async (newTypes: GroupType[]) => {
     setGroupTypes(newTypes);
     const ids = newTypes.map(t => t.id);
@@ -194,7 +183,6 @@ export function usePeopleMapData() {
     }
   }, []);
 
-  // === Categories CRUD ===
   const addCategory = useCallback(async (type: "ministry" | "role" | "tag", value: string) => {
     if (type === "ministry") setMinistries(prev => prev.includes(value) ? prev : [...prev, value]);
     if (type === "role") setRoles(prev => prev.includes(value) ? prev : [...prev, value]);
@@ -209,7 +197,6 @@ export function usePeopleMapData() {
     await supabase.from("categories").delete().eq("type", type).eq("value", value);
   }, []);
 
-  // === Export/Import ===
   const exportData = useCallback(() => {
     const data = { people, groups, oneToOnes, groupTypes, ministries, roles, tags, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -232,7 +219,6 @@ export function usePeopleMapData() {
         return;
       }
 
-      // Clear existing data
       await Promise.all([
         supabase.from("one_to_ones").delete().neq("id", ""),
         supabase.from("groups").delete().neq("id", ""),
@@ -241,30 +227,26 @@ export function usePeopleMapData() {
       await supabase.from("group_types").delete().neq("id", "");
       await supabase.from("categories").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
-      // Import group types first
       if (data.groupTypes?.length) {
         await supabase.from("group_types").upsert(data.groupTypes.map((t: GroupType) => ({ id: t.id, label: t.label, color: t.color })));
       }
-      // Import people
       if (data.people?.length) {
         await supabase.from("people").upsert(data.people.map((p: Person) => ({
           id: p.id, name: p.name, engagement: p.engagement, roles: p.roles, tags: p.tags,
           notes: p.notes, follow_up_notes: p.followUpNotes, ministries: p.ministries,
         })));
       }
-      // Import groups
       if (data.groups?.length) {
         await supabase.from("groups").upsert(data.groups.map((g: Group) => ({
-          id: g.id, type_id: g.typeId, name: g.name, members: g.members, member_legends: g.memberLegends,
+          id: g.id, type_id: g.typeId, name: g.name, members: g.members,
+          member_legends: g.memberMeta || g.memberLegends || {},
         })));
       }
-      // Import one-to-ones
       if (data.oneToOnes?.length) {
         await supabase.from("one_to_ones").upsert(data.oneToOnes.map((o: OneToOne) => ({
           id: o.id, person_a: o.personA, person_b: o.personB, frequency: o.frequency, notes: o.notes,
         })));
       }
-      // Import categories
       const catRows = [
         ...(data.ministries || []).map((v: string) => ({ type: "ministry", value: v })),
         ...(data.roles || []).map((v: string) => ({ type: "role", value: v })),
@@ -272,9 +254,8 @@ export function usePeopleMapData() {
       ];
       if (catRows.length) await supabase.from("categories").upsert(catRows, { onConflict: "type,value" });
 
-      // Reload
       setPeople(data.people.map((p: any) => ({ ...p, followUpNotes: p.followUpNotes || "" })));
-      setGroups(data.groups || []);
+      setGroups((data.groups || []).map((g: any) => ({ ...g, memberMeta: g.memberMeta || g.memberLegends || {} })));
       setOneToOnes(data.oneToOnes || []);
       setGroupTypes(data.groupTypes || []);
       setMinistries(data.ministries || []);

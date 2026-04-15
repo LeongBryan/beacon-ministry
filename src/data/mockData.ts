@@ -2,7 +2,8 @@
 
 export type EngagementLevel = "regular" | "infrequent" | "missing";
 export type MeetingFrequency = "regular" | "infrequent" | "rarely";
-export type GroupLegend = "yag_leader" | "partner" | "regular" | "infrequent" | "missing";
+export type GroupAttendance = "regular" | "infrequent" | "missing";
+export type GroupRole = "leader" | "partner";
 
 export interface Person {
   id: string;
@@ -18,15 +19,20 @@ export interface Person {
 export interface GroupType {
   id: string;
   label: string;
-  color: string; // tailwind bg class
+  color: string;
+}
+
+export interface GroupMemberMeta {
+  attendance?: GroupAttendance;
+  role?: GroupRole;
 }
 
 export interface Group {
   id: string;
   typeId: string;
   name: string;
-  members: string[]; // person ids
-  memberLegends: Record<string, GroupLegend>; // personId -> legend
+  members: string[];
+  memberMeta: Record<string, GroupMemberMeta>;
 }
 
 export interface OneToOne {
@@ -63,45 +69,22 @@ export const engagementBorderColors: Record<EngagementLevel, string> = {
   missing: "border-destructive/40",
 };
 
-export const groupLegendLabels: Record<GroupLegend, string> = {
-  yag_leader: "YAG Leader",
-  partner: "Partner",
+export const groupAttendanceLabels: Record<GroupAttendance, string> = {
   regular: "Regular",
   infrequent: "Infrequent",
   missing: "Missing",
 };
 
-export const groupLegendColors: Record<GroupLegend, string> = {
-  yag_leader: "bg-primary text-primary-foreground",
-  partner: "bg-soft-blue text-foreground",
-  regular: "bg-success text-success-foreground",
-  infrequent: "bg-warm-gold text-primary-foreground",
-  missing: "bg-destructive text-destructive-foreground",
-};
-
-export const groupLegendDotColors: Record<GroupLegend, string> = {
-  yag_leader: "bg-primary",
-  partner: "bg-soft-blue",
+export const groupAttendanceDotColors: Record<GroupAttendance, string> = {
   regular: "bg-success",
   infrequent: "bg-warm-gold",
   missing: "bg-destructive",
 };
 
-export const defaultMinistries = [
-  "Worship", "Pulpit", "Welcoming", "Bible Quest", "Read & Learn",
-  "YAG", "Resonate", "Cell Groups", "Church Camps", "Media / AV",
-  "Prayer", "Children's Ministry", "Youth", "Missions", "Admin",
-];
-
-export const defaultRoles = [
-  "Leader", "Assistant Leader", "Member", "Volunteer", "Mentor",
-];
-
-export const defaultGroupTypes: GroupType[] = [
-  { id: "cell", label: "Cell Group", color: "bg-soft-blue" },
-  { id: "resonate", label: "Resonate", color: "bg-soft-green" },
-  { id: "yag", label: "YAG", color: "bg-warm-gold-light" },
-];
+export const groupRoleLabels: Record<GroupRole, string> = {
+  leader: "Leader",
+  partner: "Partner",
+};
 
 export const frequencyColors: Record<MeetingFrequency, string> = {
   regular: "bg-success text-success-foreground",
@@ -115,9 +98,26 @@ export const frequencyLabels: Record<MeetingFrequency, string> = {
   rarely: "Rarely",
 };
 
+export const defaultMinistries = [
+  "Admin", "Bible Quest", "Cell Groups", "Children's Ministry",
+  "Church Camps", "Media / AV", "Missions", "Prayer",
+  "Pulpit", "Read & Learn", "Resonate", "Welcoming",
+  "Worship", "YAG", "Youth",
+];
+
+export const defaultRoles = [
+  "Assistant Leader", "Leader", "Member", "Mentor", "Volunteer",
+];
+
+export const defaultGroupTypes: GroupType[] = [
+  { id: "cell", label: "Cell Group", color: "bg-soft-blue" },
+  { id: "resonate", label: "Resonate", color: "bg-soft-green" },
+  { id: "yag", label: "YAG", color: "bg-warm-gold-light" },
+];
+
 export const defaultTags = [
-  "guys-121", "girls-121", "newcomer", "baptized", "serving",
-  "student", "working-adult", "overseas", "ns", "married",
+  "baptized", "girls-121", "guys-121", "married", "newcomer",
+  "ns", "overseas", "serving", "student", "working-adult",
 ];
 
 // ===== Mock Data =====
@@ -235,15 +235,15 @@ export const people: Person[] = [
 ];
 
 export const groups: Group[] = [
-  { id: "cg1", typeId: "cell", name: "Cell Group 1", members: ["1", "5", "10", "15", "20"], memberLegends: {} },
-  { id: "cg2", typeId: "cell", name: "Cell Group 2", members: ["2", "6", "11", "16", "21"], memberLegends: {} },
-  { id: "cg3", typeId: "cell", name: "Cell Group 3", members: ["3", "7", "12", "17", "22"], memberLegends: {} },
-  { id: "r1", typeId: "resonate", name: "Resonate Group 1", members: ["4", "8", "13", "18", "23"], memberLegends: {} },
-  { id: "r2", typeId: "resonate", name: "Resonate Group 2", members: ["9", "14", "19", "24", "25"], memberLegends: {} },
-  { id: "r3", typeId: "resonate", name: "Resonate Group 3", members: ["26", "27", "28", "29", "30"], memberLegends: {} },
-  { id: "y1", typeId: "yag", name: "YAG Group 1", members: ["3", "31", "32", "37", "38"], memberLegends: {} },
-  { id: "y2", typeId: "yag", name: "YAG Group 2", members: ["33", "34", "39", "40", "41"], memberLegends: {} },
-  { id: "y3", typeId: "yag", name: "YAG Group 3", members: ["42", "43", "44", "45", "46"], memberLegends: {} },
+  { id: "cg1", typeId: "cell", name: "Cell Group 1", members: ["1", "5", "10", "15", "20"], memberMeta: {} },
+  { id: "cg2", typeId: "cell", name: "Cell Group 2", members: ["2", "6", "11", "16", "21"], memberMeta: {} },
+  { id: "cg3", typeId: "cell", name: "Cell Group 3", members: ["3", "7", "12", "17", "22"], memberMeta: {} },
+  { id: "r1", typeId: "resonate", name: "Resonate Group 1", members: ["4", "8", "13", "18", "23"], memberMeta: {} },
+  { id: "r2", typeId: "resonate", name: "Resonate Group 2", members: ["9", "14", "19", "24", "25"], memberMeta: {} },
+  { id: "r3", typeId: "resonate", name: "Resonate Group 3", members: ["26", "27", "28", "29", "30"], memberMeta: {} },
+  { id: "y1", typeId: "yag", name: "YAG Group 1", members: ["3", "31", "32", "37", "38"], memberMeta: {} },
+  { id: "y2", typeId: "yag", name: "YAG Group 2", members: ["33", "34", "39", "40", "41"], memberMeta: {} },
+  { id: "y3", typeId: "yag", name: "YAG Group 3", members: ["42", "43", "44", "45", "46"], memberMeta: {} },
 ];
 
 export const oneToOnes: OneToOne[] = [
