@@ -142,6 +142,8 @@ const AllMembersView = ({
   const [editPerson, setEditPerson] = useState<Person | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(allColumns.map(c => c.key));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [columnOrder, setColumnOrder] = useState<DraggableColumnKey[]>(defaultColumnOrder);
+  const [dragColKey, setDragColKey] = useState<DraggableColumnKey | null>(null);
 
   // Build person→group name map
   const personGroupMap = useMemo(() => {
