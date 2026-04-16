@@ -142,13 +142,23 @@ const GroupsView = ({ people, groups, onUpdateGroups, onUpdatePerson, groupTypes
   const activeFilters = filterEngagement.length + filterTags.length + filterMinistries.length + (search ? 1 : 0);
 
   const handleDrop = (groupId: string, personId: string) => {
+    // Find existing meta from any source group so it carries over
+    let existingMeta: GroupMemberMeta = {};
+    for (const g of groups) {
+      if (g.members.includes(personId) && g.memberMeta[personId]) {
+        existingMeta = { ...g.memberMeta[personId] };
+        break;
+      }
+    }
     const updated = groups.map(g => {
       if (g.id === groupId && !g.members.includes(personId)) {
-        return { ...g, members: [...g.members, personId] };
+        return { ...g, members: [...g.members, personId], memberMeta: { ...g.memberMeta, [personId]: { ...existingMeta, ...g.memberMeta[personId] } } };
       }
       // If NOT ctrl-held, remove from other groups (move)
       if (!ctrlHeld && g.id !== groupId) {
-        return { ...g, members: g.members.filter(m => m !== personId) };
+        const newMeta = { ...g.memberMeta };
+        delete newMeta[personId];
+        return { ...g, members: g.members.filter(m => m !== personId), memberMeta: newMeta };
       }
       return g;
     });

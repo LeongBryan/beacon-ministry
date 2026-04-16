@@ -34,6 +34,14 @@ interface Props {
 }
 
 type ColumnKey = "name" | "servingIn" | "smallGroup" | "engagement";
+type DraggableColumnKey = "servingIn" | "smallGroup" | "engagement";
+const defaultColumnOrder: DraggableColumnKey[] = ["servingIn", "smallGroup", "engagement"];
+const columnLabels: Record<ColumnKey, string> = {
+  name: "Name",
+  servingIn: "Serving In",
+  smallGroup: "Small Group",
+  engagement: "Church Engagement",
+};
 const allColumns: { key: ColumnKey; label: string }[] = [
   { key: "name", label: "Name" },
   { key: "servingIn", label: "Serving In" },
