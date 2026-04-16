@@ -273,93 +273,113 @@ const AllMembersView = ({
                   <span className="flex items-center gap-1">Name <SortIcon field="name" /></span>
                 </th>
               )}
-              {isCol("servingIn") && <th className="text-left px-4 py-3 font-medium">Serving In</th>}
-              {isCol("smallGroup") && <th className="text-left px-4 py-3 font-medium">Small Group</th>}
-              {isCol("engagement") && (
-                <th className="text-left px-4 py-3 font-medium cursor-pointer select-none" onClick={() => toggleSort("engagement")}>
-                  <span className="flex items-center gap-1">Church Engagement <SortIcon field="engagement" /></span>
+              {columnOrder.filter(k => isCol(k)).map(colKey => (
+                <th
+                  key={colKey}
+                  draggable
+                  onDragStart={() => setDragColKey(colKey)}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={() => {
+                    if (dragColKey && dragColKey !== colKey) {
+                      setColumnOrder(prev => {
+                        const next = [...prev];
+                        const fromIdx = next.indexOf(dragColKey);
+                        const toIdx = next.indexOf(colKey);
+                        next.splice(fromIdx, 1);
+                        next.splice(toIdx, 0, dragColKey);
+                        return next;
+                      });
+                    }
+                    setDragColKey(null);
+                  }}
+                  onDragEnd={() => setDragColKey(null)}
+                  className={`text-left px-4 py-3 font-medium select-none cursor-grab ${
+                    dragColKey === colKey ? "opacity-50" : ""
+                  }`}
+                  onClick={colKey === "engagement" ? () => toggleSort("engagement") : undefined}
+                >
+                  <span className="flex items-center gap-1">
+                    <span className="text-muted-foreground/40 mr-0.5">⠿</span>
+                    {columnLabels[colKey]}
+                    {colKey === "engagement" && <SortIcon field="engagement" />}
+                  </span>
                 </th>
-              )}
+              ))}
               <th className="px-4 py-3 w-20"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(person => {
               const pGroups = personGroupMap.get(person.id) || [];
+              const cellRenderers: Record<DraggableColumnKey, () => React.ReactNode> = {
+                servingIn: () => (
+                  <td key="servingIn" className="px-4 py-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-full text-left min-h-[28px] rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
+                          {person.ministries.length === 0
+                            ? <span className="text-muted-foreground italic text-xs">—</span>
+                            : <div className="flex flex-wrap gap-1">{[...person.ministries].sort().map(m => <Badge key={m} variant="outline" className="text-xs">{m}</Badge>)}</div>
+                          }
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-0" align="start">
+                        <InlineCellSelect options={ministries} selected={person.ministries} onChange={(sel) => onUpdatePerson({ ...person, ministries: sel })} />
+                      </PopoverContent>
+                    </Popover>
+                  </td>
+                ),
+                smallGroup: () => (
+                  <td key="smallGroup" className="px-4 py-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-full text-left min-h-[28px] rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
+                          {pGroups.length === 0
+                            ? <span className="text-muted-foreground italic text-xs">—</span>
+                            : <div className="flex flex-wrap gap-1">{pGroups.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}</div>
+                          }
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-0" align="start">
+                        <InlineCellSelect
+                          options={allGroupNames}
+                          selected={pGroups}
+                          onChange={(sel) => {
+                            const newGroups = groups.map(g => {
+                              const shouldBeMember = sel.includes(g.name);
+                              const isMember = g.members.includes(person.id);
+                              if (shouldBeMember && !isMember) return { ...g, members: [...g.members, person.id] };
+                              if (!shouldBeMember && isMember) return { ...g, members: g.members.filter(m => m !== person.id) };
+                              return g;
+                            });
+                            onUpdateGroups(newGroups);
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </td>
+                ),
+                engagement: () => (
+                  <td key="engagement" className="px-4 py-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
+                          <Badge className={`${engagementColors[person.engagement]} text-xs`}>
+                            {engagementLabels[person.engagement]}
+                          </Badge>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-40 p-0" align="start">
+                        <InlineEngagementSelect value={person.engagement} onChange={(v) => onUpdatePerson({ ...person, engagement: v })} />
+                      </PopoverContent>
+                    </Popover>
+                  </td>
+                ),
+              };
               return (
                 <tr key={person.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                   {isCol("name") && <td className="px-4 py-3 font-medium">{person.name}</td>}
-                  {isCol("servingIn") && (
-                    <td className="px-4 py-3">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="w-full text-left min-h-[28px] rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
-                            {person.ministries.length === 0
-                              ? <span className="text-muted-foreground italic text-xs">—</span>
-                              : <div className="flex flex-wrap gap-1">{[...person.ministries].sort().map(m => <Badge key={m} variant="outline" className="text-xs">{m}</Badge>)}</div>
-                            }
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-0" align="start">
-                          <InlineCellSelect
-                            options={ministries}
-                            selected={person.ministries}
-                            onChange={(sel) => onUpdatePerson({ ...person, ministries: sel })}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </td>
-                  )}
-                  {isCol("smallGroup") && (
-                    <td className="px-4 py-3">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="w-full text-left min-h-[28px] rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
-                            {pGroups.length === 0
-                              ? <span className="text-muted-foreground italic text-xs">—</span>
-                              : <div className="flex flex-wrap gap-1">{pGroups.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}</div>
-                            }
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-0" align="start">
-                          <InlineCellSelect
-                            options={allGroupNames}
-                            selected={pGroups}
-                            onChange={(sel) => {
-                              // For each group, add/remove this person
-                              const newGroups = groups.map(g => {
-                                const shouldBeMember = sel.includes(g.name);
-                                const isMember = g.members.includes(person.id);
-                                if (shouldBeMember && !isMember) return { ...g, members: [...g.members, person.id] };
-                                if (!shouldBeMember && isMember) return { ...g, members: g.members.filter(m => m !== person.id) };
-                                return g;
-                              });
-                              onUpdateGroups(newGroups);
-                            }}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </td>
-                  )}
-                  {isCol("engagement") && (
-                    <td className="px-4 py-3">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
-                            <Badge className={`${engagementColors[person.engagement]} text-xs`}>
-                              {engagementLabels[person.engagement]}
-                            </Badge>
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-40 p-0" align="start">
-                          <InlineEngagementSelect
-                            value={person.engagement}
-                            onChange={(v) => onUpdatePerson({ ...person, engagement: v })}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </td>
-                  )}
+                  {columnOrder.filter(k => isCol(k)).map(colKey => cellRenderers[colKey]())}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditPerson({ ...person })}><Edit2 size={14} /></Button>
