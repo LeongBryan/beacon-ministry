@@ -103,6 +103,7 @@ const PeopleMap = () => {
             groupTypes={groupTypes}
             onUpdatePerson={updatePerson}
             onDeletePerson={deletePerson}
+            onUpdateGroups={updateGroups}
             ministries={ministries}
             roles={roles}
             tags={tags}
