@@ -23,6 +23,7 @@ interface Props {
   groupTypes: GroupType[];
   onUpdatePerson: (p: Person) => void;
   onDeletePerson: (id: string) => void;
+  onUpdateGroups: (groups: Group[]) => void;
   ministries: string[];
   roles: string[];
   tags: string[];
@@ -40,10 +41,13 @@ const allColumns: { key: ColumnKey; label: string }[] = [
   { key: "engagement", label: "Church Engagement" },
 ];
 
-function MultiSelectFilter({ label, options, selected, onChange }: {
+const engagementOrder: EngagementLevel[] = ["regular", "infrequent", "missing"];
+
+function MultiSelectFilter({ label, options, selected, onChange, sortFn }: {
   label: string; options: string[]; selected: string[]; onChange: (sel: string[]) => void;
+  sortFn?: (a: string, b: string) => number;
 }) {
-  const sorted = [...options].sort((a, b) => a.localeCompare(b));
+  const sorted = sortFn ? [...options].sort(sortFn) : [...options].sort((a, b) => a.localeCompare(b));
   const allSelected = sorted.length > 0 && selected.length === sorted.length;
   return (
     <Popover>
@@ -77,14 +81,54 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
   );
 }
 
+/* Inline cell popover for multi-select assignment */
+function InlineCellSelect({ options, selected, onChange, sortFn }: {
+  options: string[]; selected: string[]; onChange: (sel: string[]) => void;
+  sortFn?: (a: string, b: string) => number;
+}) {
+  const sorted = sortFn ? [...options].sort(sortFn) : [...options].sort((a, b) => a.localeCompare(b));
+  return (
+    <div className="max-h-48 overflow-y-auto p-1">
+      {sorted.map(opt => (
+        <label key={opt} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+          <Checkbox
+            checked={selected.includes(opt)}
+            onCheckedChange={() => onChange(selected.includes(opt) ? selected.filter(s => s !== opt) : [...selected, opt])}
+          />
+          {opt}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/* Inline engagement selector (single-select, ordered) */
+function InlineEngagementSelect({ value, onChange }: {
+  value: EngagementLevel; onChange: (v: EngagementLevel) => void;
+}) {
+  return (
+    <div className="p-1">
+      {engagementOrder.map(level => (
+        <button key={level} onClick={() => onChange(level)}
+          className={`w-full text-left text-sm px-2 py-1.5 rounded transition-all ${
+            value === level ? engagementColors[level] + " font-medium" : "hover:bg-muted"
+          }`}>
+          {engagementLabels[level]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const AllMembersView = ({
-  people, groups, groupTypes, onUpdatePerson, onDeletePerson,
+  people, groups, groupTypes, onUpdatePerson, onDeletePerson, onUpdateGroups,
   ministries, roles, tags, onAddMinistry, onAddRole, onAddTag, onDeleteTag,
 }: Props) => {
   const [search, setSearch] = useState("");
   const [filterMinistries, setFilterMinistries] = useState<string[]>([]);
   const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
   const [filterSmallGroups, setFilterSmallGroups] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
   const [sortField, setSortField] = useState<"name" | "engagement">("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [editPerson, setEditPerson] = useState<Person | null>(null);
@@ -122,16 +166,20 @@ const AllMembersView = ({
       const matchesEngagement = filterEngagement.length === 0 || filterEngagement.includes(p.engagement);
       const pGroups = personGroupMap.get(p.id) || [];
       const matchesGroup = filterSmallGroups.length === 0 || filterSmallGroups.some(g => pGroups.includes(g));
-      return matchesSearch && matchesMinistry && matchesEngagement && matchesGroup;
+      const matchesTags = filterTags.length === 0 || filterTags.some(t => p.tags.includes(t));
+      return matchesSearch && matchesMinistry && matchesEngagement && matchesGroup && matchesTags;
     });
     result.sort((a, b) => {
-      const cmp = sortField === "name"
-        ? a.name.localeCompare(b.name)
-        : a.engagement.localeCompare(b.engagement);
+      let cmp: number;
+      if (sortField === "name") {
+        cmp = a.name.localeCompare(b.name);
+      } else {
+        cmp = engagementOrder.indexOf(a.engagement as EngagementLevel) - engagementOrder.indexOf(b.engagement as EngagementLevel);
+      }
       return sortAsc ? cmp : -cmp;
     });
     return result;
-  }, [people, search, filterMinistries, filterEngagement, filterSmallGroups, sortField, sortAsc, personGroupMap]);
+  }, [people, search, filterMinistries, filterEngagement, filterSmallGroups, filterTags, sortField, sortAsc, personGroupMap]);
 
   const toggleSort = (field: "name" | "engagement") => {
     if (sortField === field) setSortAsc(!sortAsc);
@@ -143,7 +191,23 @@ const AllMembersView = ({
     return sortAsc ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
 
-  const activeFilters = filterMinistries.length + filterEngagement.length + filterSmallGroups.length;
+  const handleTogglePersonGroup = (personId: string, groupName: string) => {
+    const newGroups = groups.map(g => {
+      if (g.name !== groupName) return g;
+      const isMember = g.members.includes(personId);
+      return {
+        ...g,
+        members: isMember ? g.members.filter(m => m !== personId) : [...g.members, personId],
+      };
+    });
+    onUpdateGroups(newGroups);
+  };
+
+  const engagementSortFn = (a: string, b: string) => {
+    return engagementOrder.indexOf(a as EngagementLevel) - engagementOrder.indexOf(b as EngagementLevel);
+  };
+
+  const activeFilters = filterMinistries.length + filterEngagement.length + filterSmallGroups.length + filterTags.length;
   const isCol = (k: ColumnKey) => visibleColumns.includes(k);
 
   return (
@@ -181,9 +245,10 @@ const AllMembersView = ({
         </div>
         <MultiSelectFilter label="Serving In" options={ministries} selected={filterMinistries} onChange={setFilterMinistries} />
         <MultiSelectFilter label="Small Group" options={allGroupNames} selected={filterSmallGroups} onChange={setFilterSmallGroups} />
-        <MultiSelectFilter label="Church Engagement" options={Object.keys(engagementLabels)} selected={filterEngagement} onChange={setFilterEngagement} />
+        <MultiSelectFilter label="Church Engagement" options={Object.keys(engagementLabels)} selected={filterEngagement} onChange={setFilterEngagement} sortFn={engagementSortFn} />
+        <MultiSelectFilter label="Tags" options={tags} selected={filterTags} onChange={setFilterTags} />
         {activeFilters > 0 && (
-          <Button variant="ghost" size="sm" className="h-10 gap-1 text-muted-foreground" onClick={() => { setFilterMinistries([]); setFilterEngagement([]); setFilterSmallGroups([]); setSearch(""); }}>
+          <Button variant="ghost" size="sm" className="h-10 gap-1 text-muted-foreground" onClick={() => { setFilterMinistries([]); setFilterEngagement([]); setFilterSmallGroups([]); setFilterTags([]); setSearch(""); }}>
             <X size={14} /> Clear all
           </Button>
         )}
@@ -216,25 +281,73 @@ const AllMembersView = ({
                   {isCol("name") && <td className="px-4 py-3 font-medium">{person.name}</td>}
                   {isCol("servingIn") && (
                     <td className="px-4 py-3">
-                      {person.ministries.length === 0
-                        ? <span className="text-muted-foreground italic text-xs">—</span>
-                        : <div className="flex flex-wrap gap-1">{[...person.ministries].sort().map(m => <Badge key={m} variant="outline" className="text-xs">{m}</Badge>)}</div>
-                      }
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="w-full text-left min-h-[28px] rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
+                            {person.ministries.length === 0
+                              ? <span className="text-muted-foreground italic text-xs">—</span>
+                              : <div className="flex flex-wrap gap-1">{[...person.ministries].sort().map(m => <Badge key={m} variant="outline" className="text-xs">{m}</Badge>)}</div>
+                            }
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0" align="start">
+                          <InlineCellSelect
+                            options={ministries}
+                            selected={person.ministries}
+                            onChange={(sel) => onUpdatePerson({ ...person, ministries: sel })}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </td>
                   )}
                   {isCol("smallGroup") && (
                     <td className="px-4 py-3">
-                      {pGroups.length === 0
-                        ? <span className="text-muted-foreground italic text-xs">—</span>
-                        : <div className="flex flex-wrap gap-1">{pGroups.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}</div>
-                      }
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="w-full text-left min-h-[28px] rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
+                            {pGroups.length === 0
+                              ? <span className="text-muted-foreground italic text-xs">—</span>
+                              : <div className="flex flex-wrap gap-1">{pGroups.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}</div>
+                            }
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 p-0" align="start">
+                          <InlineCellSelect
+                            options={allGroupNames}
+                            selected={pGroups}
+                            onChange={(sel) => {
+                              // For each group, add/remove this person
+                              const newGroups = groups.map(g => {
+                                const shouldBeMember = sel.includes(g.name);
+                                const isMember = g.members.includes(person.id);
+                                if (shouldBeMember && !isMember) return { ...g, members: [...g.members, person.id] };
+                                if (!shouldBeMember && isMember) return { ...g, members: g.members.filter(m => m !== person.id) };
+                                return g;
+                              });
+                              onUpdateGroups(newGroups);
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </td>
                   )}
                   {isCol("engagement") && (
                     <td className="px-4 py-3">
-                      <Badge className={`${engagementColors[person.engagement]} text-xs`}>
-                        {engagementLabels[person.engagement]}
-                      </Badge>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="rounded px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer">
+                            <Badge className={`${engagementColors[person.engagement]} text-xs`}>
+                              {engagementLabels[person.engagement]}
+                            </Badge>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-40 p-0" align="start">
+                          <InlineEngagementSelect
+                            value={person.engagement}
+                            onChange={(v) => onUpdatePerson({ ...person, engagement: v })}
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </td>
                   )}
                   <td className="px-4 py-3">
@@ -306,7 +419,7 @@ function EditPersonDialog({ person, onSave, onClose, ministries, roles, tags, on
           <div>
             <Label>Church Engagement</Label>
             <div className="flex flex-wrap gap-1.5 mt-2">
-              {(Object.keys(engagementLabels) as EngagementLevel[]).map(level => (
+              {engagementOrder.map(level => (
                 <button key={level} onClick={() => setDraft({ ...draft, engagement: level })}
                   className={`text-xs px-2.5 py-1 rounded-full transition-all ${
                     draft.engagement === level ? engagementColors[level] : "bg-muted text-muted-foreground hover:bg-muted/80"
