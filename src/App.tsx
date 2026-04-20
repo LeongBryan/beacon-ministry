@@ -3,7 +3,7 @@ import { HashRouter as BrowserRouter, Route, Routes, Navigate } from "react-rout
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import PasscodeGate from "@/components/PasscodeGate";
+import AuthGate from "@/components/AuthGate";
 import AppLayout from "@/components/AppLayout";
 import PeopleMap from "@/pages/PeopleMap";
 import NotFound from "@/pages/NotFound";
@@ -15,7 +15,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PasscodeGate>
+      <AuthGate>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/people" replace />} />
@@ -23,7 +23,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </PasscodeGate>
+      </AuthGate>
     </TooltipProvider>
   </QueryClientProvider>
 );
