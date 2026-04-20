@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Green circle (behind tree canopy, top-right) -->
+  <circle cx="56" cy="28" r="26" fill="#a8d48a"/>
+
+  <!-- Warm gold blob (left/trunk area) -->
+  <ellipse cx="34" cy="54" rx="16" ry="22" fill="#e8c97a"/>
+
+  <!-- Blue wave (bottom-right) -->
+  <path d="M44 78 Q56 72 68 78 Q80 84 96 74 L100 74 L100 100 L44 100 Z" fill="#9ecee0"/>
+
+  <!-- Tree canopy — three overlapping ellipses for a sketchy cloud shape -->
+  <ellipse cx="50" cy="30" rx="20" ry="15" fill="#2a2a2a"/>
+  <ellipse cx="36" cy="38" rx="13" ry="11" fill="#2a2a2a"/>
+  <ellipse cx="64" cy="38" rx="13" ry="11" fill="#2a2a2a"/>
+
+  <!-- Trunk -->
+  <rect x="44" y="46" width="11" height="26" rx="4" fill="#2a2a2a"/>
+
+  <!-- People figures — head (circle) + body (rounded rect) -->
+  <!-- Person 1 (left) -->
+  <circle cx="22" cy="76" r="5" fill="#2a2a2a"/>
+  <rect x="18" y="81" width="8" height="11" rx="4" fill="#2a2a2a"/>
+
+  <!-- Person 2 (centre) -->
+  <circle cx="50" cy="76" r="5" fill="#2a2a2a"/>
+  <rect x="46" y="81" width="8" height="11" rx="4" fill="#2a2a2a"/>
+
+  <!-- Person 3 (right) -->
+  <circle cx="78" cy="76" r="5" fill="#2a2a2a"/>
+  <rect x="74" y="81" width="8" height="11" rx="4" fill="#2a2a2a"/>
+</svg>
