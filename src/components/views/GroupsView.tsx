@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,6 @@ interface Props {
   onUpdateGroupTypes: (types: GroupType[]) => void;
   tags: string[];
   ministries: string[];
-  roles: string[];
 }
 
 function MultiSelectFilter({ label, options, selected, onChange }: {
@@ -82,10 +81,18 @@ function sortGroupMembers(members: Person[], meta: Record<string, GroupMemberMet
   });
 }
 
-const GroupsView = ({ people, groups, onUpdateGroups, onUpdatePerson, groupTypes, onUpdateGroupTypes, tags, ministries, roles }: Props) => {
+const GroupsView = ({ people, groups, onUpdateGroups, onUpdatePerson, groupTypes, onUpdateGroupTypes, tags, ministries }: Props) => {
   const [filterTypeId, setFilterTypeId] = useState<string>("all");
   const [dragPersonId, setDragPersonId] = useState<string | null>(null);
   const [ctrlHeld, setCtrlHeld] = useState(false);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === "Control" || e.key === "Meta") setCtrlHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === "Control" || e.key === "Meta") setCtrlHeld(false); };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, []);
 
   const [search, setSearch] = useState("");
   const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
@@ -221,12 +228,7 @@ const GroupsView = ({ people, groups, onUpdateGroups, onUpdatePerson, groupTypes
   };
 
   return (
-    <div
-      onKeyDown={e => { if (e.key === "Control" || e.key === "Meta") setCtrlHeld(true); }}
-      onKeyUp={e => { if (e.key === "Control" || e.key === "Meta") setCtrlHeld(false); }}
-      tabIndex={-1}
-      className="outline-none"
-    >
+    <div>
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mb-4 text-xs text-muted-foreground">
         <span className="font-medium">Attendance:</span>
@@ -406,19 +408,21 @@ const GroupsView = ({ people, groups, onUpdateGroups, onUpdatePerson, groupTypes
         })}
       </div>
 
-      {/* Unassigned */}
-      <div
-        onDragOver={e => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); const pid = e.dataTransfer.getData("text/plain") || dragPersonId; if (pid) handleDropUnassigned(pid); }}
-        className={`rounded-lg border-2 border-dashed p-4 transition-colors ${dragPersonId ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/30"}`}
-      >
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">Unassigned ({unassigned.length})</h3>
-        <div className="flex flex-wrap gap-2">
-          {unassigned.map(p => (
-            <PersonChip key={p.id} person={p} onUpdatePerson={onUpdatePerson} draggable tags={tags}
-              onDragStart={() => setDragPersonId(p.id)} onDragEnd={() => setDragPersonId(null)} />
-          ))}
-          {unassigned.length === 0 && <p className="text-xs text-muted-foreground italic py-2">Everyone is assigned!</p>}
+      {/* Unassigned — sticky at bottom of viewport so it's always reachable for drag-drop */}
+      <div className="sticky bottom-0 z-10 pt-2">
+        <div
+          onDragOver={e => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); const pid = e.dataTransfer.getData("text/plain") || dragPersonId; if (pid) handleDropUnassigned(pid); }}
+          className={`rounded-lg border-2 border-dashed p-4 transition-colors shadow-lg ${dragPersonId ? "border-destructive/40 bg-destructive/5" : "border-border bg-card"}`}
+        >
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Unassigned ({unassigned.length})</h3>
+          <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+            {unassigned.map(p => (
+              <PersonChip key={p.id} person={p} onUpdatePerson={onUpdatePerson} draggable tags={tags}
+                onDragStart={() => setDragPersonId(p.id)} onDragEnd={() => setDragPersonId(null)} />
+            ))}
+            {unassigned.length === 0 && <p className="text-xs text-muted-foreground italic py-2">Everyone is assigned!</p>}
+          </div>
         </div>
       </div>
 

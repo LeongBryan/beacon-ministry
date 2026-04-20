@@ -1,3 +1,7 @@
+.env
+.env.*
+people-map-backup*.json
+
 # Logs
 logs
 *.log

@@ -2,6 +2,8 @@ import { useState, useRef } from "react";
 import { Users, Network, UserCheck, Plus, Settings, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -10,10 +12,11 @@ import AllMembersView from "@/components/views/AllMembersView";
 import GroupsView from "@/components/views/GroupsView";
 import OneToOneView from "@/components/views/OneToOneView";
 import { usePeopleMapData } from "@/hooks/usePeopleMapData";
+import { engagementColors, engagementLabels } from "@/data/mockData";
 
 const PeopleMap = () => {
   const {
-    people, groups, oneToOnes, groupTypes, ministries, roles, tags, loading,
+    people, groups, oneToOnes, groupTypes, ministries, tags, loading,
     updatePerson, addPerson, deletePerson,
     updateGroups, updateOneToOnes, updateGroupTypes,
     addCategory, deleteCategory,
@@ -22,24 +25,23 @@ const PeopleMap = () => {
 
   const [showSettings, setShowSettings] = useState(false);
   const [newMinistry, setNewMinistry] = useState("");
-  const [newRole, setNewRole] = useState("");
   const [newTag, setNewTag] = useState("");
   const [showAddPerson, setShowAddPerson] = useState(false);
-  const [newPersonName, setNewPersonName] = useState("");
+  const [newPersonDraft, setNewPersonDraft] = useState<{
+    name: string; engagement: "regular" | "infrequent" | "missing";
+    ministries: string[]; tags: string[]; notes: string; followUpNotes: string;
+  }>({ name: "", engagement: "regular", ministries: [], tags: [], notes: "", followUpNotes: "" });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddPerson = async () => {
-    if (!newPersonName.trim()) return;
-    await addPerson(newPersonName.trim());
-    setNewPersonName("");
+    if (!newPersonDraft.name.trim()) return;
+    await addPerson({ ...newPersonDraft, name: newPersonDraft.name.trim() });
+    setNewPersonDraft({ name: "", engagement: "regular", ministries: [], tags: [], notes: "", followUpNotes: "" });
     setShowAddPerson(false);
   };
 
   const handleAddMinistry = () => {
     if (newMinistry.trim()) { addCategory("ministry", newMinistry.trim()); setNewMinistry(""); }
-  };
-  const handleAddRole = () => {
-    if (newRole.trim()) { addCategory("role", newRole.trim()); setNewRole(""); }
   };
   const handleAddTag = () => {
     if (newTag.trim()) { addCategory("tag", newTag.trim()); setNewTag(""); }
@@ -105,10 +107,8 @@ const PeopleMap = () => {
             onDeletePerson={deletePerson}
             onUpdateGroups={updateGroups}
             ministries={ministries}
-            roles={roles}
             tags={tags}
             onAddMinistry={(m) => addCategory("ministry", m)}
-            onAddRole={(r) => addCategory("role", r)}
             onAddTag={(t) => addCategory("tag", t)}
             onDeleteTag={(t) => deleteCategory("tag", t)}
           />
@@ -124,7 +124,6 @@ const PeopleMap = () => {
             onUpdateGroupTypes={updateGroupTypes}
             tags={tags}
             ministries={ministries}
-            roles={roles}
           />
         </TabsContent>
 
@@ -136,26 +135,89 @@ const PeopleMap = () => {
             onUpdatePerson={updatePerson}
             tags={tags}
             ministries={ministries}
-            roles={roles}
+            groups={groups}
+            groupTypes={groupTypes}
           />
         </TabsContent>
       </Tabs>
 
       {/* Add Person Dialog */}
-      <Dialog open={showAddPerson} onOpenChange={setShowAddPerson}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={showAddPerson} onOpenChange={(open) => {
+        setShowAddPerson(open);
+        if (!open) setNewPersonDraft({ name: "", engagement: "regular", ministries: [], tags: [], notes: "", followUpNotes: "" });
+      }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Add Person</DialogTitle></DialogHeader>
-          <div className="space-y-3 mt-2">
-            <Input placeholder="Name" value={newPersonName} onChange={e => setNewPersonName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddPerson()} />
-            <div className="flex justify-end gap-2">
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Name</Label>
+              <Input
+                className="mt-1"
+                placeholder="Full name"
+                value={newPersonDraft.name}
+                onChange={e => setNewPersonDraft(d => ({ ...d, name: e.target.value }))}
+                onKeyDown={e => e.key === "Enter" && handleAddPerson()}
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Church Engagement</Label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(["regular", "infrequent", "missing"] as const).map(level => (
+                  <button key={level} onClick={() => setNewPersonDraft(d => ({ ...d, engagement: level }))}
+                    className={`text-xs px-2.5 py-1 rounded-full transition-all ${
+                      newPersonDraft.engagement === level ? engagementColors[level] : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}>
+                    {engagementLabels[level]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Serving In (Ministries)</Label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[...ministries].sort().map(m => (
+                  <button key={m} onClick={() => setNewPersonDraft(d => ({
+                    ...d, ministries: d.ministries.includes(m) ? d.ministries.filter(x => x !== m) : [...d.ministries, m],
+                  }))} className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                    newPersonDraft.ministries.includes(m) ? "bg-primary/10 border-primary/40 text-primary" : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+                  }`}>
+                    {newPersonDraft.ministries.includes(m) ? "✓ " : ""}{m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[...tags].sort().map(t => (
+                  <button key={t} onClick={() => setNewPersonDraft(d => ({
+                    ...d, tags: d.tags.includes(t) ? d.tags.filter(x => x !== t) : [...d.tags, t],
+                  }))} className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
+                    newPersonDraft.tags.includes(t) ? "bg-primary/10 border-primary/40 text-primary" : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
+                  }`}>
+                    {newPersonDraft.tags.includes(t) ? "✓ " : ""}{t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Textarea className="mt-1" rows={2} value={newPersonDraft.notes} onChange={e => setNewPersonDraft(d => ({ ...d, notes: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Follow-up Notes</Label>
+              <Textarea className="mt-1" rows={2} value={newPersonDraft.followUpNotes} onChange={e => setNewPersonDraft(d => ({ ...d, followUpNotes: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => setShowAddPerson(false)}>Cancel</Button>
-              <Button onClick={handleAddPerson}>Add</Button>
+              <Button onClick={handleAddPerson} disabled={!newPersonDraft.name.trim()}>Add</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Settings Dialog */}
+      {/* Settings / Categories Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Manage Categories</DialogTitle></DialogHeader>
@@ -173,22 +235,6 @@ const PeopleMap = () => {
               <div className="flex gap-2">
                 <Input value={newMinistry} onChange={e => setNewMinistry(e.target.value)} placeholder="Add ministry…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && handleAddMinistry()} />
                 <Button size="sm" onClick={handleAddMinistry}>Add</Button>
-              </div>
-            </div>
-
-            <div>
-              <p className="font-medium text-sm mb-2">Roles</p>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {[...roles].sort().map(r => (
-                  <span key={r} className="text-xs px-2.5 py-1 rounded-full bg-muted border border-border flex items-center gap-1">
-                    {r}
-                    <button onClick={() => deleteCategory("role", r)} className="text-muted-foreground hover:text-destructive">×</button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="Add role…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && handleAddRole()} />
-                <Button size="sm" onClick={handleAddRole}>Add</Button>
               </div>
             </div>
 

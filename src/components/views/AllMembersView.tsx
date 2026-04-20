@@ -25,10 +25,8 @@ interface Props {
   onDeletePerson: (id: string) => void;
   onUpdateGroups: (groups: Group[]) => void;
   ministries: string[];
-  roles: string[];
   tags: string[];
   onAddMinistry: (m: string) => void;
-  onAddRole: (r: string) => void;
   onAddTag: (t: string) => void;
   onDeleteTag: (t: string) => void;
 }
@@ -130,7 +128,7 @@ function InlineEngagementSelect({ value, onChange }: {
 
 const AllMembersView = ({
   people, groups, groupTypes, onUpdatePerson, onDeletePerson, onUpdateGroups,
-  ministries, roles, tags, onAddMinistry, onAddRole, onAddTag, onDeleteTag,
+  ministries, tags, onAddMinistry, onAddTag, onDeleteTag,
 }: Props) => {
   const [search, setSearch] = useState("");
   const [filterMinistries, setFilterMinistries] = useState<string[]>([]);
@@ -402,10 +400,8 @@ const AllMembersView = ({
           onSave={(p) => { onUpdatePerson(p); setEditPerson(null); }}
           onClose={() => setEditPerson(null)}
           ministries={ministries}
-          roles={roles}
           tags={tags}
           onAddMinistry={onAddMinistry}
-          onAddRole={onAddRole}
           onAddTag={onAddTag}
           onDeleteTag={onDeleteTag}
         />
@@ -414,18 +410,17 @@ const AllMembersView = ({
   );
 };
 
-function EditPersonDialog({ person, onSave, onClose, ministries, roles, tags, onAddMinistry, onAddRole, onAddTag, onDeleteTag }: {
+function EditPersonDialog({ person, onSave, onClose, ministries, tags, onAddMinistry, onAddTag, onDeleteTag }: {
   person: Person; onSave: (p: Person) => void; onClose: () => void;
-  ministries: string[]; roles: string[]; tags: string[];
-  onAddMinistry: (m: string) => void; onAddRole: (r: string) => void;
+  ministries: string[]; tags: string[];
+  onAddMinistry: (m: string) => void;
   onAddTag: (t: string) => void; onDeleteTag: (t: string) => void;
 }) {
   const [draft, setDraft] = useState<Person>(person);
   const [newMinistry, setNewMinistry] = useState("");
-  const [newRole, setNewRole] = useState("");
   const [newTag, setNewTag] = useState("");
 
-  const toggleArrayField = (field: "ministries" | "roles" | "tags", value: string) => {
+  const toggleArrayField = (field: "ministries" | "tags", value: string) => {
     setDraft(d => ({
       ...d,
       [field]: d[field].includes(value) ? d[field].filter(v => v !== value) : [...d[field], value],
@@ -433,7 +428,6 @@ function EditPersonDialog({ person, onSave, onClose, ministries, roles, tags, on
   };
 
   const sortedMinistries = [...ministries].sort();
-  const sortedRoles = [...roles].sort();
   const sortedTags = [...tags].sort();
 
   return (
@@ -478,28 +472,6 @@ function EditPersonDialog({ person, onSave, onClose, ministries, roles, tags, on
               }} />
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
                 if (newMinistry.trim()) { onAddMinistry(newMinistry.trim()); toggleArrayField("ministries", newMinistry.trim()); setNewMinistry(""); }
-              }}><Plus size={12} /></Button>
-            </div>
-          </div>
-
-          <div>
-            <Label>Roles</Label>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {sortedRoles.map(r => (
-                <button key={r} onClick={() => toggleArrayField("roles", r)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-all ${
-                    draft.roles.includes(r) ? "bg-primary/10 border-primary/40 text-primary" : "bg-muted/50 border-border text-muted-foreground hover:bg-muted"
-                  }`}>
-                  {draft.roles.includes(r) ? "✓ " : ""}{r}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-2">
-              <Input value={newRole} onChange={e => setNewRole(e.target.value)} placeholder="Add new…" className="h-7 text-xs" onKeyDown={e => {
-                if (e.key === "Enter" && newRole.trim()) { onAddRole(newRole.trim()); toggleArrayField("roles", newRole.trim()); setNewRole(""); }
-              }} />
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => {
-                if (newRole.trim()) { onAddRole(newRole.trim()); toggleArrayField("roles", newRole.trim()); setNewRole(""); }
               }}><Plus size={12} /></Button>
             </div>
           </div>

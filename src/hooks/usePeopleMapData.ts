@@ -115,12 +115,22 @@ export function usePeopleMapData() {
     }).eq("id", updated.id);
   }, []);
 
-  const addPerson = useCallback(async (name: string) => {
+  const addPerson = useCallback(async (data: Pick<Person, "name"> & Partial<Omit<Person, "id" | "roles">>) => {
     const id = `p-${Date.now()}`;
-    const person: Person = { id, name, engagement: "regular", roles: [], tags: [], notes: "", followUpNotes: "", ministries: [] };
+    const person: Person = {
+      id,
+      name: data.name,
+      engagement: data.engagement ?? "regular",
+      roles: [],
+      tags: data.tags ?? [],
+      notes: data.notes ?? "",
+      followUpNotes: data.followUpNotes ?? "",
+      ministries: data.ministries ?? [],
+    };
     setPeople(prev => [...prev, person]);
     await supabase.from("people").insert({
-      id, name, engagement: "regular", roles: [], tags: [], notes: "", follow_up_notes: "", ministries: [],
+      id, name: person.name, engagement: person.engagement, roles: [],
+      tags: person.tags, notes: person.notes, follow_up_notes: person.followUpNotes, ministries: person.ministries,
     });
     return person;
   }, []);
@@ -191,9 +201,31 @@ export function usePeopleMapData() {
   }, []);
 
   const deleteCategory = useCallback(async (type: "ministry" | "role" | "tag", value: string) => {
-    if (type === "ministry") setMinistries(prev => prev.filter(v => v !== value));
+    if (type === "ministry") {
+      setMinistries(prev => prev.filter(v => v !== value));
+      setPeople(prev => prev.map(p =>
+        p.ministries.includes(value) ? { ...p, ministries: p.ministries.filter(m => m !== value) } : p
+      ));
+      const { data: affected } = await supabase.from("people").select("id, ministries").contains("ministries", [value]);
+      if (affected?.length) {
+        await Promise.all(affected.map(p =>
+          supabase.from("people").update({ ministries: (p.ministries as string[]).filter(m => m !== value) }).eq("id", p.id)
+        ));
+      }
+    }
+    if (type === "tag") {
+      setTags(prev => prev.filter(v => v !== value));
+      setPeople(prev => prev.map(p =>
+        p.tags.includes(value) ? { ...p, tags: p.tags.filter(t => t !== value) } : p
+      ));
+      const { data: affected } = await supabase.from("people").select("id, tags").contains("tags", [value]);
+      if (affected?.length) {
+        await Promise.all(affected.map(p =>
+          supabase.from("people").update({ tags: (p.tags as string[]).filter(t => t !== value) }).eq("id", p.id)
+        ));
+      }
+    }
     if (type === "role") setRoles(prev => prev.filter(v => v !== value));
-    if (type === "tag") setTags(prev => prev.filter(v => v !== value));
     await supabase.from("categories").delete().eq("type", type).eq("value", value);
   }, []);
 

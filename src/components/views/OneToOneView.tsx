@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/popover";
 import PersonChip from "@/components/PersonChip";
 import {
-  type Person, type OneToOne, type MeetingFrequency,
+  type Person, type OneToOne, type MeetingFrequency, type Group, type GroupType,
   frequencyColors, frequencyLabels, engagementLabels,
 } from "@/data/mockData";
 
@@ -23,7 +23,8 @@ interface Props {
   onUpdatePerson: (p: Person) => void;
   tags: string[];
   ministries: string[];
-  roles: string[];
+  groups: Group[];
+  groupTypes: GroupType[];
 }
 
 function MultiSelectFilter({ label, options, selected, onChange }: {
@@ -54,7 +55,7 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
   );
 }
 
-const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, tags, ministries, roles }: Props) => {
+const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, tags, ministries, groups, groupTypes }: Props) => {
   const [viewMode, setViewMode] = useState<"panels" | "mesh">("panels");
   const [dragPersonId, setDragPersonId] = useState<string | null>(null);
 
@@ -62,12 +63,25 @@ const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, ta
   const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
   const [filterMinistries, setFilterMinistries] = useState<string[]>([]);
-  const [filterRoles, setFilterRoles] = useState<string[]>([]);
+  const [filterSmallGroups, setFilterSmallGroups] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<"name" | "engagement">("name");
   const [sortAsc, setSortAsc] = useState(true);
 
   const personMap = useMemo(() => new Map(people.map(p => [p.id, p])), [people]);
+
+  const allGroupNames = useMemo(() => [...new Set(groups.map(g => g.name))].sort(), [groups]);
+
+  const personGroupMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const g of groups) {
+      for (const mid of g.members) {
+        if (!map.has(mid)) map.set(mid, []);
+        map.get(mid)!.push(g.name);
+      }
+    }
+    return map;
+  }, [groups]);
 
   const matchesPerson = useCallback((p: Person) => {
     const s = search.toLowerCase();
@@ -75,9 +89,10 @@ const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, ta
     const matchesEng = filterEngagement.length === 0 || filterEngagement.includes(p.engagement);
     const matchesTag = filterTags.length === 0 || filterTags.every(t => p.tags.includes(t));
     const matchesMin = filterMinistries.length === 0 || filterMinistries.some(m => p.ministries.includes(m));
-    const matchesRole = filterRoles.length === 0 || filterRoles.some(r => p.roles.includes(r));
-    return matchesSearch && matchesEng && matchesTag && matchesMin && matchesRole;
-  }, [search, filterEngagement, filterTags, filterMinistries, filterRoles]);
+    const pGroups = personGroupMap.get(p.id) || [];
+    const matchesGroup = filterSmallGroups.length === 0 || filterSmallGroups.some(g => pGroups.includes(g));
+    return matchesSearch && matchesEng && matchesTag && matchesMin && matchesGroup;
+  }, [search, filterEngagement, filterTags, filterMinistries, filterSmallGroups, personGroupMap]);
 
   const personConnections = useMemo(() => {
     const map = new Map<string, { partnerId: string; pairId: string; frequency: MeetingFrequency }[]>();
@@ -118,7 +133,7 @@ const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, ta
     return Array.from(s).sort();
   }, [people, tags]);
 
-  const activeFilters = filterEngagement.length + filterTags.length + filterMinistries.length + filterRoles.length + (search ? 1 : 0);
+  const activeFilters = filterEngagement.length + filterTags.length + filterMinistries.length + filterSmallGroups.length + (search ? 1 : 0);
 
   const toggleFilterTag = (tag: string) => {
     setFilterTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
@@ -194,15 +209,15 @@ const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, ta
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search people…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-10" />
         </div>
-        <MultiSelectFilter label="Ministry" options={ministries} selected={filterMinistries} onChange={setFilterMinistries} />
-        <MultiSelectFilter label="Role" options={roles} selected={filterRoles} onChange={setFilterRoles} />
-        <MultiSelectFilter label="Engagement" options={Object.keys(engagementLabels)} selected={filterEngagement} onChange={setFilterEngagement} />
+        <MultiSelectFilter label="Serving In" options={ministries} selected={filterMinistries} onChange={setFilterMinistries} />
+        <MultiSelectFilter label="Small Group" options={allGroupNames} selected={filterSmallGroups} onChange={setFilterSmallGroups} />
+        <MultiSelectFilter label="Church Engagement" options={Object.keys(engagementLabels)} selected={filterEngagement} onChange={setFilterEngagement} />
         <Button variant={showFilters ? "default" : "outline"} onClick={() => setShowFilters(!showFilters)} className="gap-2 h-10">
           <Filter size={16} /> Tags
           {filterTags.length > 0 && <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">{filterTags.length}</Badge>}
         </Button>
         {activeFilters > 0 && (
-          <Button variant="ghost" size="sm" className="h-10 gap-1 text-muted-foreground" onClick={() => { setFilterEngagement([]); setFilterMinistries([]); setFilterRoles([]); setFilterTags([]); setSearch(""); }}>
+          <Button variant="ghost" size="sm" className="h-10 gap-1 text-muted-foreground" onClick={() => { setFilterEngagement([]); setFilterMinistries([]); setFilterSmallGroups([]); setFilterTags([]); setSearch(""); }}>
             <X size={14} /> Clear all
           </Button>
         )}
