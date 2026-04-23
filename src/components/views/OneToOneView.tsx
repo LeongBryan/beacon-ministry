@@ -487,6 +487,9 @@ function MeshView({
   const [nodePositions, setNodePositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [draggingNode, setDraggingNode] = useState<string | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const clampZoom = (z: number) => Math.min(3, Math.max(0.25, z));
+  const handleWheel = (e: React.WheelEvent) => { e.preventDefault(); setZoom(z => clampZoom(z * (e.deltaY < 0 ? 1.1 : 0.9))); };
 
   const nodes = useMemo(() => [...panelPeople], [panelPeople]);
 
@@ -513,23 +516,29 @@ function MeshView({
     rarely: { color: "hsl(var(--muted-foreground))", dash: "3,3", width: 1 },
   };
 
+  const toSvgCoords = (e: React.MouseEvent) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM()!.inverse());
+  };
+
   const handleMouseDown = (e: React.MouseEvent, personId: string) => {
     const pos = nodePositions.get(personId);
     if (!pos) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const pt = svg.getBoundingClientRect();
-    dragOffset.current = { x: e.clientX - pt.left - pos.x, y: e.clientY - pt.top - pos.y };
+    const svgPt = toSvgCoords(e);
+    if (!svgPt) return;
+    dragOffset.current = { x: svgPt.x - pos.x, y: svgPt.y - pos.y };
     setDraggingNode(personId);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!draggingNode) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-    const pt = svg.getBoundingClientRect();
-    const x = e.clientX - pt.left - dragOffset.current.x;
-    const y = e.clientY - pt.top - dragOffset.current.y;
+    const svgPt = toSvgCoords(e);
+    if (!svgPt) return;
+    const x = svgPt.x - dragOffset.current.x;
+    const y = svgPt.y - dragOffset.current.y;
     setNodePositions(prev => {
       const next = new Map(prev);
       next.set(draggingNode, { x: Math.max(30, Math.min(width - 30, x)), y: Math.max(20, Math.min(height - 20, y)) });
@@ -553,10 +562,13 @@ function MeshView({
     missing: "hsl(var(--destructive))",
   };
 
+  const vbX = (width - width / zoom) / 2;
+  const vbY = (height - height / zoom) / 2;
+
   return (
     <div className="bg-card rounded-lg border border-border mb-6 overflow-hidden">
-      <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" style={{ minHeight: 300, maxHeight: 500 }}
-        onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+      <svg ref={svgRef} viewBox={`${vbX} ${vbY} ${width / zoom} ${height / zoom}`} className="w-full h-auto" style={{ minHeight: 300, maxHeight: 500 }}
+        onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onWheel={handleWheel}>
         {edges.map(o => {
           const a = nodePositions.get(o.personA);
           const b = nodePositions.get(o.personB);
@@ -598,8 +610,13 @@ function MeshView({
         })}
       </svg>
       <div className="flex items-center gap-4 px-4 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground">
-        <span>Drag nodes to rearrange</span>
+        <span>Scroll or use buttons to zoom · Drag nodes to rearrange</span>
         <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => reLayout(true)}>Reorganize</Button>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-sm" onClick={() => setZoom(z => clampZoom(z * 1.2))}>+</Button>
+          <span className="w-10 text-center">{Math.round(zoom * 100)}%</span>
+          <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-sm" onClick={() => setZoom(z => clampZoom(z * 0.8))}>−</Button>
+        </div>
         <div className="flex items-center gap-3 ml-auto">
           <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-success inline-block" /> Regular</div>
           <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-warm-gold inline-block border-dashed" style={{ borderTop: "2px dashed" }} /> Infrequent</div>
