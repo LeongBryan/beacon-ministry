@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  type Person, type Group, type OneToOne, type GroupType, type GroupMemberMeta,
+  type Person, type Group, type OneToOne, type GroupType, type GroupMemberMeta, type Household,
   people as initialPeople, groups as initialGroups,
   oneToOnes as initialOneToOnes, defaultGroupTypes,
   defaultMinistries, defaultRoles, defaultTags,
@@ -16,6 +16,7 @@ export function usePeopleMapData() {
   const [ministries, setMinistries] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
+  const [households, setHouseholds] = useState<Household[]>([]);
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
 
@@ -28,12 +29,13 @@ export function usePeopleMapData() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [pRes, gRes, oRes, gtRes, cRes] = await Promise.all([
+      const [pRes, gRes, oRes, gtRes, cRes, hhRes] = await Promise.all([
         supabase.from("people").select("*"),
         supabase.from("groups").select("*"),
         supabase.from("one_to_ones").select("*"),
         supabase.from("group_types").select("*"),
         supabase.from("categories").select("*"),
+        supabase.from("households").select("*"),
       ]);
 
       if (!pRes.data?.length) {
@@ -61,6 +63,7 @@ export function usePeopleMapData() {
       setMinistries(cats.filter(c => c.type === "ministry").map(c => c.value));
       setRoles(cats.filter(c => c.type === "role").map(c => c.value));
       setTags(cats.filter(c => c.type === "tag").map(c => c.value));
+      setHouseholds((hhRes.data || []).map(r => ({ id: r.id, name: r.name, members: r.members || [] })));
     } catch (e) {
       console.error("Load error:", e);
     } finally {
@@ -135,9 +138,20 @@ export function usePeopleMapData() {
     return person;
   }, []);
 
+  const updateHouseholds = useCallback(async (newHH: Household[]) => {
+    setHouseholds(newHH);
+    const ids = newHH.map(h => h.id);
+    const { data: existing } = await supabase.from("households").select("id");
+    const existingIds = (existing || []).map((r: { id: string }) => r.id);
+    const toDelete = existingIds.filter((id: string) => !ids.includes(id));
+    if (toDelete.length) await supabase.from("households").delete().in("id", toDelete);
+    if (newHH.length) await supabase.from("households").upsert(newHH.map(h => ({ id: h.id, name: h.name, members: h.members })));
+  }, []);
+
   const deletePerson = useCallback(async (personId: string) => {
     setPeople(prev => prev.filter(p => p.id !== personId));
     setGroups(prev => prev.map(g => ({ ...g, members: g.members.filter(m => m !== personId) })));
+    setHouseholds(prev => prev.map(h => ({ ...h, members: h.members.filter(m => m !== personId) })));
     setOneToOnes(prev => prev.filter(o => o.personA !== personId && o.personB !== personId));
     await Promise.all([
       supabase.from("people").delete().eq("id", personId),
@@ -302,9 +316,10 @@ export function usePeopleMapData() {
   }, []);
 
   return {
-    people, groups, oneToOnes, groupTypes, ministries, roles, tags, loading,
+    people, groups, oneToOnes, groupTypes, ministries, roles, tags, households, loading,
     updatePerson, addPerson, deletePerson,
     updateGroups, updateOneToOnes, updateGroupTypes,
+    updateHouseholds,
     addCategory, deleteCategory,
     exportData, importData,
   };

@@ -488,8 +488,10 @@ function MeshView({
   const [draggingNode, setDraggingNode] = useState<string | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const clampZoom = (z: number) => Math.min(3, Math.max(0.25, z));
-  const handleWheel = (e: React.WheelEvent) => { e.preventDefault(); setZoom(z => clampZoom(z * (e.deltaY < 0 ? 1.1 : 0.9))); };
+  const clampZoom = (z: number) => Math.min(4, Math.max(0.15, z));
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStart = useRef({ mx: 0, my: 0, px: 0, py: 0 });
 
   const nodes = useMemo(() => [...panelPeople], [panelPeople]);
 
@@ -510,6 +512,19 @@ function MeshView({
     setNodePositions(runForceLayout(nodes.map(n => n.id), forceEdges, width, height));
   }, [nodes.length]);
 
+  // Prevent page scroll when wheel fires inside the SVG
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setZoom(z => clampZoom(z * (e.deltaY < 0 ? 1.1 : 0.9)));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const frequencyStroke: Record<MeetingFrequency, { color: string; dash: string; width: number }> = {
     regular: { color: "hsl(var(--success))", dash: "", width: 2 },
     infrequent: { color: "hsl(var(--warm-gold))", dash: "6,3", width: 1.5 },
@@ -524,7 +539,15 @@ function MeshView({
     return pt.matrixTransform(svg.getScreenCTM()!.inverse());
   };
 
+  const startPan = (e: React.MouseEvent) => {
+    e.preventDefault();
+    panStart.current = { mx: e.clientX, my: e.clientY, px: pan.x, py: pan.y };
+    setIsPanning(true);
+  };
+
   const handleMouseDown = (e: React.MouseEvent, personId: string) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
     const pos = nodePositions.get(personId);
     if (!pos) return;
     const svgPt = toSvgCoords(e);
@@ -534,19 +557,27 @@ function MeshView({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const scale = svg.getBoundingClientRect().width / (width / zoom);
+      setPan({
+        x: panStart.current.px - (e.clientX - panStart.current.mx) / scale,
+        y: panStart.current.py - (e.clientY - panStart.current.my) / scale,
+      });
+      return;
+    }
     if (!draggingNode) return;
     const svgPt = toSvgCoords(e);
     if (!svgPt) return;
-    const x = svgPt.x - dragOffset.current.x;
-    const y = svgPt.y - dragOffset.current.y;
     setNodePositions(prev => {
       const next = new Map(prev);
-      next.set(draggingNode, { x: Math.max(30, Math.min(width - 30, x)), y: Math.max(20, Math.min(height - 20, y)) });
+      next.set(draggingNode, { x: svgPt.x - dragOffset.current.x, y: svgPt.y - dragOffset.current.y });
       return next;
     });
   };
 
-  const handleMouseUp = () => setDraggingNode(null);
+  const handleMouseUp = () => { setDraggingNode(null); setIsPanning(false); };
 
   const edges = oneToOnes.filter(o => o.personA && o.personB && nodePositions.has(o.personA) && nodePositions.has(o.personB));
 
@@ -562,13 +593,17 @@ function MeshView({
     missing: "hsl(var(--destructive))",
   };
 
-  const vbX = (width - width / zoom) / 2;
-  const vbY = (height - height / zoom) / 2;
+  const vbX = (width - width / zoom) / 2 + pan.x;
+  const vbY = (height - height / zoom) / 2 + pan.y;
 
   return (
     <div className="bg-card rounded-lg border border-border mb-6 overflow-hidden">
-      <svg ref={svgRef} viewBox={`${vbX} ${vbY} ${width / zoom} ${height / zoom}`} className="w-full h-auto" style={{ minHeight: 300, maxHeight: 500 }}
-        onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} onWheel={handleWheel}>
+      <svg ref={svgRef} viewBox={`${vbX} ${vbY} ${width / zoom} ${height / zoom}`}
+        className="w-full h-auto" style={{ minHeight: 300, maxHeight: 500, cursor: isPanning ? "grabbing" : "grab" }}
+        onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}
+        onMouseDown={(e) => { if (e.button === 0 || e.button === 1) startPan(e); }}>
+        {/* Background catch-all — absorbs LMB clicks on whitespace for pan */}
+        <rect x={-50000} y={-50000} width={100000} height={100000} fill="transparent" />
         {edges.map(o => {
           const a = nodePositions.get(o.personA);
           const b = nodePositions.get(o.personB);
@@ -610,8 +645,8 @@ function MeshView({
         })}
       </svg>
       <div className="flex items-center gap-4 px-4 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground">
-        <span>Scroll or use buttons to zoom · Drag nodes to rearrange</span>
-        <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => reLayout(true)}>Reorganize</Button>
+        <span>Scroll to zoom · Drag canvas to pan · Drag nodes to move</span>
+        <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => { reLayout(true); setPan({ x: 0, y: 0 }); }}>Reorganize</Button>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="sm" className="h-6 w-6 p-0 text-sm" onClick={() => setZoom(z => clampZoom(z * 1.2))}>+</Button>
           <span className="w-10 text-center">{Math.round(zoom * 100)}%</span>

@@ -16,9 +16,10 @@ import { engagementColors, engagementLabels } from "@/data/mockData";
 
 const PeopleMap = () => {
   const {
-    people, groups, oneToOnes, groupTypes, ministries, tags, loading,
+    people, groups, oneToOnes, groupTypes, ministries, tags, households, loading,
     updatePerson, addPerson, deletePerson,
     updateGroups, updateOneToOnes, updateGroupTypes,
+    updateHouseholds,
     addCategory, deleteCategory,
     exportData, importData,
   } = usePeopleMapData();
@@ -26,6 +27,8 @@ const PeopleMap = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [newMinistry, setNewMinistry] = useState("");
   const [newTag, setNewTag] = useState("");
+  const [newHouseholdName, setNewHouseholdName] = useState("");
+  const [newHouseholdMembers, setNewHouseholdMembers] = useState<string[]>([]);
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [newPersonDraft, setNewPersonDraft] = useState<{
     name: string; engagement: "regular" | "infrequent" | "missing";
@@ -103,6 +106,7 @@ const PeopleMap = () => {
             people={people}
             groups={groups}
             groupTypes={groupTypes}
+            households={households}
             onUpdatePerson={updatePerson}
             onDeletePerson={deletePerson}
             onUpdateGroups={updateGroups}
@@ -251,6 +255,75 @@ const PeopleMap = () => {
               <div className="flex gap-2">
                 <Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Add tag…" className="h-8 text-sm" onKeyDown={e => e.key === "Enter" && handleAddTag()} />
                 <Button size="sm" onClick={handleAddTag}>Add</Button>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-medium text-sm mb-2">Households</p>
+              <div className="space-y-3 mb-3">
+                {households.map(hh => (
+                  <div key={hh.id} className="p-3 bg-muted/30 rounded-lg border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">{hh.name}</span>
+                      <button onClick={() => updateHouseholds(households.filter(h => h.id !== hh.id))} className="text-muted-foreground hover:text-destructive text-sm leading-none">×</button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {hh.members.map(mid => {
+                        const p = people.find(p => p.id === mid);
+                        if (!p) return null;
+                        return (
+                          <span key={mid} className="text-xs px-2 py-0.5 bg-card border border-border rounded-full flex items-center gap-1">
+                            {p.name}
+                            <button onClick={() => updateHouseholds(households.map(h => h.id === hh.id ? { ...h, members: h.members.filter(m => m !== mid) } : h))} className="text-muted-foreground hover:text-destructive leading-none">×</button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <select
+                      className="w-full h-7 text-xs rounded border border-border bg-background px-2"
+                      value=""
+                      onChange={e => { if (e.target.value) updateHouseholds(households.map(h => h.id === hh.id ? { ...h, members: [...h.members, e.target.value] } : h)); e.target.value = ""; }}
+                    >
+                      <option value="">+ Add member…</option>
+                      {[...people].filter(p => !hh.members.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 bg-muted/20 rounded-lg border border-dashed border-border space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">New household</p>
+                <Input value={newHouseholdName} onChange={e => setNewHouseholdName(e.target.value)} placeholder="Household name (e.g. Wei Ern & Esther)" className="h-8 text-sm" />
+                <select
+                  className="w-full h-7 text-xs rounded border border-border bg-background px-2"
+                  value=""
+                  onChange={e => { if (e.target.value && !newHouseholdMembers.includes(e.target.value)) setNewHouseholdMembers(prev => [...prev, e.target.value]); e.target.value = ""; }}
+                >
+                  <option value="">+ Add member…</option>
+                  {[...people].filter(p => !newHouseholdMembers.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {newHouseholdMembers.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {newHouseholdMembers.map(mid => {
+                      const p = people.find(p => p.id === mid);
+                      return p ? (
+                        <span key={mid} className="text-xs px-2 py-0.5 bg-card border border-border rounded-full flex items-center gap-1">
+                          {p.name}
+                          <button onClick={() => setNewHouseholdMembers(prev => prev.filter(m => m !== mid))} className="text-muted-foreground hover:text-destructive leading-none">×</button>
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+                <Button size="sm" className="w-full" disabled={!newHouseholdName.trim() || newHouseholdMembers.length < 2} onClick={() => {
+                  updateHouseholds([...households, { id: `hh-${Date.now()}`, name: newHouseholdName.trim(), members: newHouseholdMembers }]);
+                  setNewHouseholdName(""); setNewHouseholdMembers([]);
+                }}>
+                  Add Household
+                </Button>
               </div>
             </div>
           </div>

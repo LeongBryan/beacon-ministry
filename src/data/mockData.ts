@@ -43,6 +43,21 @@ export interface OneToOne {
   notes: string;
 }
 
+export interface Household {
+  id: string;
+  name: string;
+  members: string[];
+}
+
+export const HOUSEHOLD_PALETTE = [
+  { badge: "bg-blue-100 text-blue-700 border-blue-200",   row: "rgba(219,234,254,0.35)" },
+  { badge: "bg-violet-100 text-violet-700 border-violet-200", row: "rgba(237,233,254,0.35)" },
+  { badge: "bg-pink-100 text-pink-700 border-pink-200",   row: "rgba(252,231,243,0.35)" },
+  { badge: "bg-amber-100 text-amber-700 border-amber-200", row: "rgba(254,243,199,0.35)" },
+  { badge: "bg-teal-100 text-teal-700 border-teal-200",   row: "rgba(204,251,241,0.35)" },
+  { badge: "bg-orange-100 text-orange-700 border-orange-200", row: "rgba(255,237,213,0.35)" },
+];
+
 // ===== Labels & Colors =====
 
 export const engagementLabels: Record<EngagementLevel, string> = {

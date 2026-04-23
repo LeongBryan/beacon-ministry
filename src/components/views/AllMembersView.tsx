@@ -13,14 +13,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  type Person, type Group, type GroupType, type EngagementLevel,
-  engagementColors, engagementLabels,
+  type Person, type Group, type GroupType, type EngagementLevel, type Household,
+  engagementColors, engagementLabels, HOUSEHOLD_PALETTE,
 } from "@/data/mockData";
 
 interface Props {
   people: Person[];
   groups: Group[];
   groupTypes: GroupType[];
+  households: Household[];
   onUpdatePerson: (p: Person) => void;
   onDeletePerson: (id: string) => void;
   onUpdateGroups: (groups: Group[]) => void;
@@ -127,7 +128,7 @@ function InlineEngagementSelect({ value, onChange }: {
 }
 
 const AllMembersView = ({
-  people, groups, groupTypes, onUpdatePerson, onDeletePerson, onUpdateGroups,
+  people, groups, groupTypes, households, onUpdatePerson, onDeletePerson, onUpdateGroups,
   ministries, tags, onAddMinistry, onAddTag, onDeleteTag,
 }: Props) => {
   const [search, setSearch] = useState("");
@@ -142,6 +143,15 @@ const AllMembersView = ({
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [columnOrder, setColumnOrder] = useState<DraggableColumnKey[]>(defaultColumnOrder);
   const [dragColKey, setDragColKey] = useState<DraggableColumnKey | null>(null);
+  const [showHouseholdColors, setShowHouseholdColors] = useState(false);
+
+  const personHouseholdMap = useMemo(() => {
+    const map = new Map<string, { household: Household; colorIdx: number }>();
+    [...households].sort((a, b) => a.name.localeCompare(b.name)).forEach((hh, idx) => {
+      hh.members.forEach(mid => map.set(mid, { household: hh, colorIdx: idx % HOUSEHOLD_PALETTE.length }));
+    });
+    return map;
+  }, [households]);
 
   // Build person→group name map
   const personGroupMap = useMemo(() => {
@@ -224,6 +234,12 @@ const AllMembersView = ({
         <p className="text-sm text-muted-foreground">
           {filtered.length} {filtered.length === 1 ? "person" : "people"}
         </p>
+        <div className="flex items-center gap-1">
+          {households.length > 0 && (
+            <Button variant={showHouseholdColors ? "default" : "ghost"} size="sm" className="h-8 px-2 gap-1 text-xs" onClick={() => setShowHouseholdColors(v => !v)}>
+              Households
+            </Button>
+          )}
         <Popover open={showColumnPicker} onOpenChange={setShowColumnPicker}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 px-2 gap-1 text-xs">
@@ -244,6 +260,7 @@ const AllMembersView = ({
             ))}
           </PopoverContent>
         </Popover>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -374,9 +391,22 @@ const AllMembersView = ({
                   </td>
                 ),
               };
+              const hhInfo = personHouseholdMap.get(person.id);
+              const rowBg = showHouseholdColors && hhInfo ? HOUSEHOLD_PALETTE[hhInfo.colorIdx].row : undefined;
               return (
-                <tr key={person.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                  {isCol("name") && <td className="px-4 py-3 font-medium">{person.name}</td>}
+                <tr key={person.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors" style={rowBg ? { backgroundColor: rowBg } : undefined}>
+                  {isCol("name") && (
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {person.name}
+                        {hhInfo && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-normal ${HOUSEHOLD_PALETTE[hhInfo.colorIdx].badge}`}>
+                            {hhInfo.household.name}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   {columnOrder.filter(k => isCol(k)).map(colKey => cellRenderers[colKey]())}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
