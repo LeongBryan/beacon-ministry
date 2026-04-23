@@ -15,6 +15,7 @@ const ALLOWED_EMAILS = [
   "rachelker@gmail.com",
   "leongbryan@gmail.com",
   "leong.bryan@gmail.com",
+  "joanneleongjy@gmail.com",
 ];
 
 const AuthGate = ({ children }: { children: React.ReactNode }) => {

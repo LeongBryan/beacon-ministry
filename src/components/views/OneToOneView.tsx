@@ -5,15 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Filter, X, LayoutGrid, Share2, Trash2 } from "lucide-react";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger,
 } from "@/components/ui/select";
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import PersonChip from "@/components/PersonChip";
 import {
-  type Person, type OneToOne, type MeetingFrequency, type Group, type GroupType,
-  frequencyColors, frequencyLabels, engagementLabels,
+  type Person, type OneToOne, type MeetingFrequency, type Group,
+  frequencyColors, frequencyLabels, engagementLabels, engagementDotColors,
 } from "@/data/mockData";
 
 interface Props {
@@ -24,7 +24,6 @@ interface Props {
   tags: string[];
   ministries: string[];
   groups: Group[];
-  groupTypes: GroupType[];
 }
 
 function MultiSelectFilter({ label, options, selected, onChange }: {
@@ -55,7 +54,7 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
   );
 }
 
-const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, tags, ministries, groups, groupTypes }: Props) => {
+const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, tags, ministries, groups }: Props) => {
   const [viewMode, setViewMode] = useState<"panels" | "mesh">("panels");
   const [dragPersonId, setDragPersonId] = useState<string | null>(null);
 
@@ -255,14 +254,13 @@ const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, ta
           onUpdatePerson={onUpdatePerson}
           onDeletePanel={handleDeletePanel}
           tags={tags}
+          allPeople={people}
         />
       )}
 
       {viewMode === "mesh" && (
         <MeshView
-          people={people}
           oneToOnes={oneToOnes}
-          personMap={personMap}
           panelPeople={panelPeople}
           personConnections={personConnections}
         />
@@ -308,10 +306,50 @@ const OneToOneView = ({ people, oneToOnes, onUpdateOneToOnes, onUpdatePerson, ta
   );
 };
 
+// ===== Panel inline search =====
+function PanelSearchInput({ personId, allPeople, personConnections, onAddConnection }: {
+  personId: string;
+  allPeople: Person[];
+  personConnections: Map<string, { partnerId: string; pairId: string; frequency: MeetingFrequency }[]>;
+  onAddConnection: (targetId: string, droppedId: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const existing = useMemo(() => new Set([personId, ...(personConnections.get(personId)?.map(c => c.partnerId) || [])]), [personId, personConnections]);
+  const suggestions = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return allPeople.filter(p => !existing.has(p.id) && p.name.toLowerCase().includes(q)).slice(0, 6);
+  }, [query, allPeople, existing]);
+  return (
+    <div className="relative mt-2">
+      <Input
+        placeholder="+ add person…"
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="h-7 text-xs"
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-popover border border-border rounded-md shadow-md overflow-hidden">
+          {suggestions.map(p => (
+            <button key={p.id} onMouseDown={() => { onAddConnection(personId, p.id); setQuery(""); setOpen(false); }}
+              className="w-full text-left text-xs px-3 py-1.5 hover:bg-muted flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${engagementDotColors[p.engagement]}`} />
+              {p.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== Panels View =====
 function PanelsView({
   panelPeople, personConnections, personMap, dragPersonId, setDragPersonId,
-  onDropOnPanel, onRemoveConnection, onChangeFrequency, onUpdatePerson, onDeletePanel, tags,
+  onDropOnPanel, onRemoveConnection, onChangeFrequency, onUpdatePerson, onDeletePanel, tags, allPeople,
 }: {
   panelPeople: Person[];
   personConnections: Map<string, { partnerId: string; pairId: string; frequency: MeetingFrequency }[]>;
@@ -324,6 +362,7 @@ function PanelsView({
   onUpdatePerson: (p: Person) => void;
   onDeletePanel: (personId: string) => void;
   tags: string[];
+  allPeople: Person[];
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -377,7 +416,7 @@ function PanelsView({
                 );
               })}
             </div>
-            {connections.length === 0 && <p className="text-xs text-muted-foreground italic py-1">Drop someone here to pair</p>}
+            <PanelSearchInput personId={person.id} allPeople={allPeople} personConnections={personConnections} onAddConnection={onDropOnPanel} />
           </div>
         );
       })}
@@ -385,13 +424,61 @@ function PanelsView({
   );
 }
 
+// ===== Force-directed layout =====
+function runForceLayout(
+  nodeIds: string[],
+  edges: Array<{ a: string; b: string }>,
+  width: number,
+  height: number,
+  seed?: Map<string, { x: number; y: number }>,
+  iterations = 250
+): Map<string, { x: number; y: number }> {
+  const pos = new Map<string, { x: number; y: number }>();
+  nodeIds.forEach(id => {
+    const s = seed?.get(id);
+    pos.set(id, s ? { ...s } : { x: 60 + Math.random() * (width - 120), y: 40 + Math.random() * (height - 80) });
+  });
+  const vel = new Map(nodeIds.map(id => [id, { x: 0, y: 0 }]));
+  const repulsion = 4000, springK = 0.012, restLen = 130, damping = 0.75;
+  for (let iter = 0; iter < iterations; iter++) {
+    const f = new Map(nodeIds.map(id => [id, { x: 0, y: 0 }]));
+    for (let i = 0; i < nodeIds.length; i++) {
+      for (let j = i + 1; j < nodeIds.length; j++) {
+        const a = nodeIds[i], b = nodeIds[j];
+        const pa = pos.get(a)!, pb = pos.get(b)!;
+        const dx = pa.x - pb.x, dy = pa.y - pb.y;
+        const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+        const force = repulsion / (dist * dist);
+        const fx = (dx / dist) * force, fy = (dy / dist) * force;
+        f.get(a)!.x += fx; f.get(a)!.y += fy;
+        f.get(b)!.x -= fx; f.get(b)!.y -= fy;
+      }
+    }
+    for (const edge of edges) {
+      const pa = pos.get(edge.a), pb = pos.get(edge.b);
+      if (!pa || !pb) continue;
+      const dx = pb.x - pa.x, dy = pb.y - pa.y;
+      const dist = Math.max(Math.sqrt(dx * dx + dy * dy), 1);
+      const force = springK * (dist - restLen);
+      const fx = (dx / dist) * force, fy = (dy / dist) * force;
+      f.get(edge.a)!.x += fx; f.get(edge.a)!.y += fy;
+      f.get(edge.b)!.x -= fx; f.get(edge.b)!.y -= fy;
+    }
+    for (const id of nodeIds) {
+      const v = vel.get(id)!, fv = f.get(id)!, p = pos.get(id)!;
+      v.x = (v.x + fv.x) * damping; v.y = (v.y + fv.y) * damping;
+      p.x = Math.max(30, Math.min(width - 30, p.x + v.x));
+      p.y = Math.max(20, Math.min(height - 20, p.y + v.y));
+    }
+  }
+  return pos;
+}
+
 // ===== Mesh View (SVG node graph) =====
 function MeshView({
-  people, oneToOnes, personMap, panelPeople, personConnections,
+  oneToOnes, panelPeople, personConnections,
 }: {
-  people: Person[];
   oneToOnes: OneToOne[];
-  personMap: Map<string, Person>;
   panelPeople: Person[];
   personConnections: Map<string, { partnerId: string; pairId: string; frequency: MeetingFrequency }[]>;
 }) {
@@ -401,35 +488,23 @@ function MeshView({
   const [draggingNode, setDraggingNode] = useState<string | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  // Sort nodes: most connected first (leftmost)
-  const nodes = useMemo(() => {
-    return [...panelPeople].sort((a, b) => {
-      const aConns = personConnections.get(a.id)?.length || 0;
-      const bConns = personConnections.get(b.id)?.length || 0;
-      return bConns - aConns;
-    });
-  }, [panelPeople, personConnections]);
+  const nodes = useMemo(() => [...panelPeople], [panelPeople]);
 
   const width = 800;
   const height = 500;
 
-  useEffect(() => {
-    // Layout: most connected at left, spread across
-    const positions = new Map<string, { x: number; y: number }>();
-    const rows = Math.ceil(Math.sqrt(nodes.length));
-    const cols = Math.ceil(nodes.length / rows);
-    const xGap = (width - 120) / Math.max(cols - 1, 1);
-    const yGap = (height - 80) / Math.max(rows - 1, 1);
+  const forceEdges = useMemo(() =>
+    oneToOnes.filter(o => o.personA && o.personB).map(o => ({ a: o.personA, b: o.personB })),
+    [oneToOnes]);
 
-    nodes.forEach((person, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      positions.set(person.id, {
-        x: 60 + col * xGap,
-        y: 40 + row * yGap,
-      });
-    });
-    setNodePositions(positions);
+  const reLayout = useCallback((randomize = false) => {
+    const seed = randomize ? undefined : nodePositions.size > 0 ? nodePositions : undefined;
+    setNodePositions(runForceLayout(nodes.map(n => n.id), forceEdges, width, height, seed));
+  }, [nodes, forceEdges, nodePositions]);
+
+  useEffect(() => {
+    if (nodes.length === 0) return;
+    setNodePositions(runForceLayout(nodes.map(n => n.id), forceEdges, width, height));
   }, [nodes.length]);
 
   const frequencyStroke: Record<MeetingFrequency, { color: string; dash: string; width: number }> = {
@@ -523,10 +598,13 @@ function MeshView({
         })}
       </svg>
       <div className="flex items-center gap-4 px-4 py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground">
-        <span>Drag nodes to rearrange · Most connected start at top-left</span>
-        <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-success inline-block" /> Regular</div>
-        <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-warm-gold inline-block border-dashed" style={{ borderTop: "2px dashed" }} /> Infrequent</div>
-        <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-muted-foreground inline-block" style={{ borderTop: "2px dotted" }} /> Rarely</div>
+        <span>Drag nodes to rearrange</span>
+        <Button variant="outline" size="sm" className="h-6 px-2 text-xs" onClick={() => reLayout(true)}>Reorganize</Button>
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-success inline-block" /> Regular</div>
+          <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-warm-gold inline-block border-dashed" style={{ borderTop: "2px dashed" }} /> Infrequent</div>
+          <div className="flex items-center gap-1"><span className="w-6 h-0.5 bg-muted-foreground inline-block" style={{ borderTop: "2px dotted" }} /> Rarely</div>
+        </div>
       </div>
     </div>
   );
