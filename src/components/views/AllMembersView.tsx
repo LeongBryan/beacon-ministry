@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   type Person, type Group, type GroupType, type EngagementLevel, type Household,
-  engagementColors, engagementLabels, HOUSEHOLD_PALETTE,
+  engagementColors, engagementLabels,
 } from "@/data/mockData";
 
 interface Props {
@@ -32,20 +32,22 @@ interface Props {
   onDeleteTag: (t: string) => void;
 }
 
-type ColumnKey = "name" | "servingIn" | "smallGroup" | "engagement";
-type DraggableColumnKey = "servingIn" | "smallGroup" | "engagement";
-const defaultColumnOrder: DraggableColumnKey[] = ["servingIn", "smallGroup", "engagement"];
+type ColumnKey = "name" | "servingIn" | "smallGroup" | "engagement" | "household";
+type DraggableColumnKey = "servingIn" | "smallGroup" | "engagement" | "household";
+const defaultColumnOrder: DraggableColumnKey[] = ["servingIn", "smallGroup", "engagement", "household"];
 const columnLabels: Record<ColumnKey, string> = {
   name: "Name",
   servingIn: "Serving In",
   smallGroup: "Small Group",
   engagement: "Church Engagement",
+  household: "Household",
 };
 const allColumns: { key: ColumnKey; label: string }[] = [
   { key: "name", label: "Name" },
   { key: "servingIn", label: "Serving In" },
   { key: "smallGroup", label: "Small Group" },
   { key: "engagement", label: "Church Engagement" },
+  { key: "household", label: "Household" },
 ];
 
 const engagementOrder: EngagementLevel[] = ["regular", "infrequent", "missing"];
@@ -136,20 +138,17 @@ const AllMembersView = ({
   const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
   const [filterSmallGroups, setFilterSmallGroups] = useState<string[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
-  const [sortField, setSortField] = useState<"name" | "engagement">("name");
+  const [sortField, setSortField] = useState<"name" | "engagement" | "household">("name");
   const [sortAsc, setSortAsc] = useState(true);
   const [editPerson, setEditPerson] = useState<Person | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(allColumns.map(c => c.key));
+  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(allColumns.filter(c => c.key !== "household").map(c => c.key));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [columnOrder, setColumnOrder] = useState<DraggableColumnKey[]>(defaultColumnOrder);
   const [dragColKey, setDragColKey] = useState<DraggableColumnKey | null>(null);
-  const [showHouseholdColors, setShowHouseholdColors] = useState(false);
 
   const personHouseholdMap = useMemo(() => {
-    const map = new Map<string, { household: Household; colorIdx: number }>();
-    [...households].sort((a, b) => a.name.localeCompare(b.name)).forEach((hh, idx) => {
-      hh.members.forEach(mid => map.set(mid, { household: hh, colorIdx: idx % HOUSEHOLD_PALETTE.length }));
-    });
+    const map = new Map<string, Household>();
+    households.forEach(hh => hh.members.forEach(mid => map.set(mid, hh)));
     return map;
   }, [households]);
 
@@ -191,6 +190,10 @@ const AllMembersView = ({
       let cmp: number;
       if (sortField === "name") {
         cmp = a.name.localeCompare(b.name);
+      } else if (sortField === "household") {
+        const aHH = personHouseholdMap.get(a.id)?.name ?? "\uFFFF";
+        const bHH = personHouseholdMap.get(b.id)?.name ?? "\uFFFF";
+        cmp = aHH.localeCompare(bHH);
       } else {
         cmp = engagementOrder.indexOf(a.engagement as EngagementLevel) - engagementOrder.indexOf(b.engagement as EngagementLevel);
       }
@@ -199,7 +202,7 @@ const AllMembersView = ({
     return result;
   }, [people, search, filterMinistries, filterEngagement, filterSmallGroups, filterTags, sortField, sortAsc, personGroupMap]);
 
-  const toggleSort = (field: "name" | "engagement") => {
+  const toggleSort = (field: "name" | "engagement" | "household") => {
     if (sortField === field) setSortAsc(!sortAsc);
     else { setSortField(field); setSortAsc(true); }
   };
@@ -234,12 +237,6 @@ const AllMembersView = ({
         <p className="text-sm text-muted-foreground">
           {filtered.length} {filtered.length === 1 ? "person" : "people"}
         </p>
-        <div className="flex items-center gap-1">
-          {households.length > 0 && (
-            <Button variant={showHouseholdColors ? "default" : "ghost"} size="sm" className="h-8 px-2 gap-1 text-xs" onClick={() => setShowHouseholdColors(v => !v)}>
-              Households
-            </Button>
-          )}
         <Popover open={showColumnPicker} onOpenChange={setShowColumnPicker}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 px-2 gap-1 text-xs">
@@ -260,7 +257,6 @@ const AllMembersView = ({
             ))}
           </PopoverContent>
         </Popover>
-        </div>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
@@ -311,12 +307,12 @@ const AllMembersView = ({
                   className={`text-left px-4 py-3 font-medium select-none cursor-grab ${
                     dragColKey === colKey ? "opacity-50" : ""
                   }`}
-                  onClick={colKey === "engagement" ? () => toggleSort("engagement") : undefined}
+                  onClick={(colKey === "engagement" || colKey === "household") ? () => toggleSort(colKey) : undefined}
                 >
                   <span className="flex items-center gap-1">
                     <span className="text-muted-foreground/40 mr-0.5">⠿</span>
                     {columnLabels[colKey]}
-                    {colKey === "engagement" && <SortIcon field="engagement" />}
+                    {(colKey === "engagement" || colKey === "household") && <SortIcon field={colKey} />}
                   </span>
                 </th>
               ))}
@@ -326,6 +322,7 @@ const AllMembersView = ({
           <tbody>
             {filtered.map(person => {
               const pGroups = personGroupMap.get(person.id) || [];
+              const hh = personHouseholdMap.get(person.id);
               const cellRenderers: Record<DraggableColumnKey, () => React.ReactNode> = {
                 servingIn: () => (
                   <td key="servingIn" className="px-4 py-3">
@@ -390,23 +387,18 @@ const AllMembersView = ({
                     </Popover>
                   </td>
                 ),
+                household: () => (
+                  <td key="household" className="px-4 py-3">
+                    {hh
+                      ? <Badge variant="secondary" className="text-xs font-normal">{hh.name}</Badge>
+                      : <span className="text-muted-foreground italic text-xs">—</span>
+                    }
+                  </td>
+                ),
               };
-              const hhInfo = personHouseholdMap.get(person.id);
-              const rowBg = showHouseholdColors && hhInfo ? HOUSEHOLD_PALETTE[hhInfo.colorIdx].row : undefined;
               return (
-                <tr key={person.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors" style={rowBg ? { backgroundColor: rowBg } : undefined}>
-                  {isCol("name") && (
-                    <td className="px-4 py-3 font-medium">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {person.name}
-                        {hhInfo && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-normal ${HOUSEHOLD_PALETTE[hhInfo.colorIdx].badge}`}>
-                            {hhInfo.household.name}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  )}
+                <tr key={person.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                  {isCol("name") && <td className="px-4 py-3 font-medium">{person.name}</td>}
                   {columnOrder.filter(k => isCol(k)).map(colKey => cellRenderers[colKey]())}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
